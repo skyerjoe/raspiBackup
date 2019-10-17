@@ -57,11 +57,11 @@ IS_HOTFIX=$((! $? ))
 MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
 
-GIT_DATE="$Date: 2019-10-11 14:10:06 +0200$"
+GIT_DATE="$Date: 2019-10-17 20:25:36 +0200$"
 GIT_DATE_ONLY=${GIT_DATE/: /}
 GIT_DATE_ONLY=$(cut -f 2 -d ' ' <<< $GIT_DATE)
 GIT_TIME_ONLY=$(cut -f 3 -d ' ' <<< $GIT_DATE)
-GIT_COMMIT="$Sha1: e0e51fd$"
+GIT_COMMIT="$Sha1: c9a3599$"
 GIT_COMMIT_ONLY=$(cut -f 2 -d ' ' <<< $GIT_COMMIT | sed 's/\$//')
 
 GIT_CODEVERSION="$MYSELF $VERSION, $GIT_DATE_ONLY/$GIT_TIME_ONLY - $GIT_COMMIT_ONLY"
@@ -728,8 +728,8 @@ MSG_FILE_ARG_NOT_FOUND=149
 MSG_EN[$MSG_FILE_ARG_NOT_FOUND]="RBK0149E: %s not found."
 MSG_DE[$MSG_FILE_ARG_NOT_FOUND]="RBK0149E: %s nicht gefunden."
 MSG_MAX_4GB_LIMIT=150
-MSG_EN[$MSG_MAX_4GB_LIMIT]="RBK0150W: Maximum file size in backup directory %s is limited to 4GB."
-MSG_DE[$MSG_MAX_4GB_LIMIT]="RBK0150W: Maximale Dateigröße im Backupverzeichnis %s ist auf 4GB begrenzt."
+MSG_EN[$MSG_MAX_4GB_LIMIT]="RBK0150W: Maximum file size in backup directory %s is limited to 4GB. Consider to use option --split."
+MSG_DE[$MSG_MAX_4GB_LIMIT]="RBK0150W: Maximale Dateigröße im Backupverzeichnis %s ist auf 4GB begrenzt. Überlege die Option --split zu benutzen."
 MSG_USING_BACKUPPATH=151
 MSG_EN[$MSG_USING_BACKUPPATH]="RBK0151I: Using backuppath %s."
 MSG_DE[$MSG_USING_BACKUPPATH]="RBK0151I: Backuppfad %s wird benutzt."
@@ -922,6 +922,21 @@ MSG_DE[$MSG_UUIDS_NOT_UNIQUE]="RBK0209W: UUIDs sind nicht eindeutig auf den Ger�
 MSG_MULTIPLE_PARTITIONS_FOUND_BUT_2_PARTITIONS_SAVED_ONLY=210
 MSG_EN[$MSG_MULTIPLE_PARTITIONS_FOUND_BUT_2_PARTITIONS_SAVED_ONLY]="RBK0210W: More than two partitions detected. Only first two partitions are saved."
 MSG_DE[$MSG_MULTIPLE_PARTITIONS_FOUND_BUT_2_PARTITIONS_SAVED_ONLY]="RBK0210W: Es existieren mehr als zwei Partitionen. Nur die ersten beiden Partitionen werden gesichert."
+MSG_SPLITTING_FILE=211
+MSG_EN[$MSG_SPLITTING_FILE]="RBK0211I: Backup file will be split into chunks of %s"
+MSG_DE[$MSG_SPLITTING_FILE]="RBK0211I: Backup Dateie wird in %s Teile zerlegt."
+MSG_ASSEMBLING_FILE=212
+MSG_EN[$MSG_ASSEMBLING_FILE]="RBK0212I: Backup file will be assembled from chunks"
+MSG_DE[$MSG_ASSEMBLING_FILE]="RBK0212I: Backup Datei werden von Teilen zusammengesetzt."
+MSG_SPLIT_NOT_RSYNC=213
+MSG_EN[$MSG_SPLIT_NOT_RSYNC]="RBK0213E: Split not possible for rsync."
+MSG_DE[$MSG_SPLIT_NOT_RSYNC]="RBK0213E: Split ist für rsync nicht möglich."
+MSG_INVALID_SPLIT_PARM=214
+MSG_EN[$MSG_INVALID_SPLIT_PARM]="RBK0214E: Invalid split parameter %s"
+MSG_DE[$MSG_INVALID_SPLIT_PARM]="RBK0214E: Split Parameter %s is ungültig."
+MSG_SPLIT_TOO_LARGE=215
+MSG_EN[$MSG_SPLIT_TOO_LARGE]="RBK0215E: Split parameter %s too large. Maximum possible size is %s"
+MSG_DE[$MSG_SPLIT_TOO_LARGE]="RBK0215E: Split Parameter %s is zu gross. Maximaler möglicher Wert ist %s."
 
 declare -A MSG_HEADER=( ['I']="---" ['W']="!!!" ['E']="???" )
 
@@ -1391,6 +1406,7 @@ function logOptions() {
 	logItem "SENDER_EMAIL=$SENDER_EMAIL"
  	logItem "SKIP_DEPRECATED=$SKIP_DEPRECATED"
  	logItem "SKIPLOCALCHECK=$SKIPLOCALCHECK"
+	logItem "SPLIT_SIZE=$SPLIT_SIZE"
 	logItem "STARTSERVICES=$STARTSERVICES"
 	logItem "STOPSERVICES=$STOPSERVICES"
 	logItem "SYSTEMSTATUS=$SYSTEMSTATUS"
@@ -1520,6 +1536,8 @@ function initializeDefaultConfig() {
 	DEFAULT_UPDATE_UUIDS=0
 	# ignore partitions > 2 in normal mode
 	DEFAULT_IGNORE_ADDITIONAL_PARTITIONS=0
+	# max size of backup files
+	DEFAULT_SPLIT_SIZE=""
 
 	############# End default config section #############
 
@@ -1570,6 +1588,7 @@ function initializeConfig() {
 	[[ -z "$RSYNC_BACKUP_OPTIONS" ]] && RSYNC_BACKUP_OPTIONS="$DEFAULT_RSYNC_BACKUP_OPTIONS"
 	[[ -z "$SENDER_EMAIL" ]] && SENDER_EMAIL="$DEFAULT_SENDER_EMAIL"
 	[[ -z "$SKIPLOCALCHECK" ]] && SKIPLOCALCHECK="$DEFAULT_SKIPLOCALCHECK"
+	[[ -z "$SPLIT_SIZE" ]] && SPLIT_SIZE="$DEFAULT_SPLIT_SIZE"
 	[[ -z "$STARTSERVICES" ]] && STARTSERVICES="$DEFAULT_STARTSERVICES"
 	[[ -z "$STOPSERVICES" ]] && STOPSERVICES="$DEFAULT_STOPSERVICES"
 	[[ -z "$SYSTEMSTATUS" ]] && SYSTEMSTATUS="$DEFAULT_SYSTEMSTATUS"
@@ -2134,6 +2153,14 @@ function supportsSymlinks() {	# directory
 	logExit "$result"
 
 	return $result
+}
+
+#return maximum possible filesize log(n)/log(2) on path in bytes
+function maxFileSize() { # path
+	logEntry "$1"
+	local size=$(getconf FILESIZEBITS "$1")
+	echo "$size"
+	logExit "$size"
 }
 
 function isMounted() { # dir
@@ -3182,13 +3209,23 @@ function ddBackup() {
 				if (( $PROGRESS )); then
 					cmd="dd if=$BOOT_DEVICENAME bs=$DD_BLOCKSIZE $DD_PARMS | pv -fs $(fdisk -l $BOOT_DEVICENAME | grep "Disk.*$BOOT_DEVICENAME" | cut -d ' ' -f 5) | gzip ${verbose} > \"$BACKUPTARGET_FILE\""
 				else
-					cmd="dd if=$BOOT_DEVICENAME bs=$DD_BLOCKSIZE $DD_PARMS | gzip ${verbose} > \"$BACKUPTARGET_FILE\""
+					if [[ -n $SPLIT_SIZE ]]; then
+						writeToConsole $MSG_LEVEL_MINIMAL $MSG_SPLITTING_FILE "$SPLIT_SIZE"
+						cmd="dd if=$BOOT_DEVICENAME bs=$DD_BLOCKSIZE $DD_PARMS | gzip ${verbose} -c | split -b $SPLIT_SIZE - \"$BACKUPTARGET_FILE.\""
+					else
+						cmd="dd if=$BOOT_DEVICENAME bs=$DD_BLOCKSIZE $DD_PARMS | gzip ${verbose} > \"$BACKUPTARGET_FILE\""
+					fi
 				fi
 			else
 				if (( $PROGRESS )); then
 					cmd="dd if=$BOOT_DEVICENAME bs=$DD_BLOCKSIZE $DD_PARMS | pv -fs $(fdisk -l $BOOT_DEVICENAME | grep "Disk.*$BOOT_DEVICENAME" | cut -d ' ' -f 5) | dd of=\"$BACKUPTARGET_FILE\""
 				else
-					cmd="dd if=$BOOT_DEVICENAME bs=$DD_BLOCKSIZE $DD_PARMS of=\"$BACKUPTARGET_FILE\""
+					if [[ -n $SPLIT_SIZE ]]; then
+						writeToConsole $MSG_LEVEL_MINIMAL $MSG_SPLITTING_FILE "$SPLIT_SIZE"
+						cmd="dd if=$BOOT_DEVICENAME bs=$DD_BLOCKSIZE $DD_PARMS | split -b $SPLIT_SIZE - \"$BACKUPTARGET_FILE.\""
+					else
+						cmd="dd if=$BOOT_DEVICENAME bs=$DD_BLOCKSIZE $DD_PARMS of=\"$BACKUPTARGET_FILE\""
+					fi
 				fi
 			fi
 		else
@@ -3542,7 +3579,11 @@ function restore() {
 				if (( $PROGRESS )); then
 					cmd="dd if=\"$ROOT_RESTOREFILE\" | pv -fs $(stat -c %s "$ROOT_RESTOREFILE") | dd of=$RESTORE_DEVICE bs=$DD_BLOCKSIZE $DD_PARMS"
 				else
-					cmd="dd of=$RESTORE_DEVICE bs=$DD_BLOCKSIZE if=\"$ROOT_RESTOREFILE\" $DD_PARMS"
+					if [[ -n $SPLIT_SIZE ]]; then
+						cmd="cat $ROOT_RESTOREFILE.* | dd of=$RESTORE_DEVICE bs=$DD_BLOCKSIZE"
+					else
+						cmd="dd of=$RESTORE_DEVICE bs=$DD_BLOCKSIZE if=\"$ROOT_RESTOREFILE\" $DD_PARMS"
+					fi
 				fi
 			else
 				if (( $PROGRESS )); then
@@ -4680,6 +4721,51 @@ function doitBackup() {
 		fi
 	fi
 
+	# check whether defined split size is possible on backup path
+
+	if [[ -n $SPLIT_SIZE ]]; then
+		if [[ $BACKUPTYPE == $BACKUPTYPE_RSYNC ]]; then
+			writeToConsole $MSG_LEVEL_MINIMAL $MSG_SPLIT_NOT_RSYNC
+			exitError $RC_PARAMETER_ERROR
+		fi
+
+		if ! which bc &>/dev/null; then
+			writeToConsole $MSG_LEVEL_MINIMAL $MSG_MISSING_INSTALLED_FILE "bc" "bc"
+			exitError $RC_MISSING_COMMANDS
+		fi
+
+		local s="$SPLIT_SIZE"
+		local k=1024 # factor 1000 (B) or 1024 (default)
+		if [[ $SPLIT_SIZE =~ .+B ]]; then
+			k=1000
+			s=${SPLIT_SIZE::-1}
+		fi
+		logItem "k: $k"
+		local u # unit, e.g. K, M or G
+		if [[ ! $s =~ ^[0-9]+$ ]]; then # there was a unit specified, e.g. 4G
+			u=${s: -1}	# unit G
+			s=${s::-1}	# size 4
+		fi
+		logItem "u: $u s: $s"
+		local f # factor for unit
+		case $u in
+			K) f=$k;;
+			M) f=$(( k*k ));;
+			G) f=$(( k*k*k ));;
+			*) f=1;; # no unit specified
+		esac
+
+		local m=$(maxFileSize $BACKUPPATH) # log(n)/log(2) of max filesize on backup partition
+		logItem "Splitsize: $SPLIT_SIZE - Factor: $f - Size: $s - log(n)/log(2): $m"
+		local d=$(bc <<< "if ( $f * $s >  2^$m ) 1 else 0") # return 1 if split size > possible file size
+		if (( $d )); then
+			local mm=$(bc <<< "2^$m")
+			local mm=$(bytesToHuman "$mm")
+			writeToConsole $MSG_LEVEL_MINIMAL $MSG_SPLIT_TOO_LARGE $SPLIT_SIZE "$mm"
+			exitError $RC_PARAMETER_ERROR
+		fi
+	fi
+
 	writeToConsole $MSG_LEVEL_MINIMAL $MSG_USING_BACKUPPATH "$BACKUPPATH"
 
 	backup
@@ -4771,6 +4857,13 @@ function findNonpartitionBackupBootAndRootpartitionFiles() {
 			writeToConsole $MSG_LEVEL_MINIMAL $MSG_NO_ROOTBACKUPFILE_FOUND $BACKUPTYPE
 			exitError $RC_MISC_ERROR
 		fi
+	fi
+
+	if (( $(wc -l <<< "$ROOT_RESTOREFILE") > 1 )); then
+		writeToConsole $MSG_LEVEL_MINIMAL $MSG_ASSEMBLING_FILE
+		SPLIT_SIZE="some value"
+		ROOT_RESTOREFILE="$(head -n 1 <<< $ROOT_RESTOREFILE)"
+		ROOT_RESTOREFILE="$(sed -E 's/\.[^\.]+$//' <<< $ROOT_RESTOREFILE)" # remove split extensions
 	fi
 
 	writeToConsole $MSG_LEVEL_DETAILED $MSG_USING_ROOTBACKUPFILE "$ROOT_RESTOREFILE"
@@ -6233,6 +6326,16 @@ while (( "$#" )); do
 	-S|-S[-+])
 	  FORCE_UPDATE=$(getEnableDisableOption "$1"); shift 1
 	  ;;
+
+	--split|--split[+-])
+		o=$(checkOptionParameter "$1" "$2")
+		(( $? )) && exitError $RC_PARAMETER_ERROR
+		SPLIT_SIZE="$o"; shift 2
+		if [[ ! $SPLIT_SIZE =~ [0-9]+(K|M|G)B? ]]; then
+			writeToConsole $MSG_LEVEL_MINIMAL $MSG_INVALID_SPLIT_PARM "$SPLIT_SIZE"
+			exitError $RC_PARAMETER_ERROR
+		fi
+		;;
 
 	--systemstatus|--systemstatus[+-])
 	  SYSTEMSTATUS=$(getEnableDisableOption "$1"); shift 1
