@@ -34,11 +34,11 @@ MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
 CURRENT_DIR=$(pwd)
 
-GIT_DATE="$Date: 2017-08-25 22:01:55 +0200$"
+GIT_DATE="$Date: 2019-10-21 19:47:00 +0200$"
 GIT_DATE_ONLY=${GIT_DATE/: /}
 GIT_DATE_ONLY=$(cut -f 2 -d ' ' <<< $GIT_DATE)
 GIT_TIME_ONLY=$(cut -f 3 -d ' ' <<< $GIT_DATE)
-GIT_COMMIT="$Sha1: 9d2b368$"
+GIT_COMMIT="$Sha1: a46c949$"
 GIT_COMMIT_ONLY=$(cut -f 2 -d ' ' <<< $GIT_COMMIT | sed 's/\$//')
 
 GIT_CODEVERSION="$MYSELF $VERSION, $GIT_DATE_ONLY/$GIT_TIME_ONLY - $GIT_COMMIT_ONLY"
@@ -89,6 +89,8 @@ echo "---> Restore disk size: $RESTORE_DISK_SIZE"
 OLDIFS="$IFS"
 IFS=$'\n'
 
+losetup -D
+
 LOOP=$(losetup -f)
 
 OPTS="-m 1 -l 1 -Z"
@@ -122,21 +124,17 @@ for backup in $BACKUPS_TO_RESTORE; do
 
 	for image in "${IMAGES_TO_RESTORE[@]}"; do
 
-#	@@@
-#		image="${IMAGES_TO_RESTORE[0]}"
-
 		log "Processing image $image"
 
-#		MBR_FILE=$(ls -d "$image/"*".mbr")		# check for mbr in dir
-#
-#		if [[ -z $MBR_FILE ]]; then
-#			MBR_FILE=$(ls -d "$backup/"*".mbr")
-#			if [[ -z $MBR_FILE ]]; then
-#				echo "??? No mbr file found"
-#				ls -d "$backup/"*".mbr"
-#				exit 127
-#			fi
-#		fi
+		if [[ ! $image =~ -dd.?- ]]; then
+			MBR_FILE=$(ls -d "$image/"*".mbr")		# check for mbr in dir
+
+			if [[ -z $MBR_FILE ]]; then
+				echo "??? No mbr file found"
+				ls -d "$backup/"*".mbr"
+				exit 127
+			fi
+		fi
 
 		retry=3
 
@@ -148,7 +146,10 @@ for backup in $BACKUPS_TO_RESTORE; do
 			qemu-img create -f raw $VMs/raspiBackupRestore.img $RESTORE_DISK_SIZE
 
 			log "mounting image"
-			sudo losetup $LOOP $VMs/raspiBackupRestore.img
+			sudo losetup -vP $LOOP $VMs/raspiBackupRestore.img
+			if [[ ! $image =~ -dd.?- ]]; then
+				dd if=$MBR_FILE of=$LOOP count=1 # primt loop partitions
+			fi
 
 			echo "Starting restore of $image"
 
@@ -163,7 +164,7 @@ for backup in $BACKUPS_TO_RESTORE; do
 			losetup -D
 
 			LOOP=$(losetup -f)
-			losetup $LOOP "$VMs/raspiBackupRestore.img"
+			losetup -vP $LOOP "$VMs/raspiBackupRestore.img"
 			log "Updating fake-hwclock on restored image"
 			mount ${LOOP}p2 /mnt
 			echo $(date +"%Y-%m-%d %T") > /mnt/etc/fake-hwclock.data
