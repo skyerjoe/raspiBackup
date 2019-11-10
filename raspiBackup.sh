@@ -31,7 +31,7 @@ if [ ! -n "$BASH" ] ;then
    exit 127
 fi
 
-VERSION="0.6.4.4-dev"	# -beta, -hotfix or -dev suffixes possible
+VERSION="0.6.4.4-beta"	# -beta, -hotfix or -dev suffixes possible
 
 # add pathes if not already set (usually not set in crontab)
 
@@ -1743,7 +1743,7 @@ function downloadPropertiesFile() { # FORCE
 
 	NEW_PROPERTIES_FILE=0
 
-	if (( ! $REGRESSION_TEST )); then
+	if (( ! $REGRESSION_TEST )); then # don't execute any update checks in regression test
 
 		if shouldRenewDownloadPropertiesFile "$1"; then
 
@@ -3621,17 +3621,6 @@ function restore() {
 				cp "$SF_FILE" $$.sfdisk
 				logCommand "cat $$.sfdisk"
 
-				if (( $REGRESSION_TEST )); then # have to prime loop device with partition defs first
-					writeToConsole $MSG_LEVEL_DETAILED $MSG_RESTORING_MBR "$MBR_FILE" "$RESTORE_DEVICE"
-					dd of=$RESTORE_DEVICE if="$MBR_FILE" count=1 &>>"$LOG_FILE"
-					rc=$?
-					if [ $rc != 0 ]; then
-						writeToConsole $MSG_LEVEL_MINIMAL $MSG_IMG_DD_FAILED ".mbr" "$rc"
-						exitError $RC_NATIVE_RESTORE_FAILED
-					fi
-					waitForPartitionDefsChanged
-				fi
-
 				if (( ! $ROOT_PARTITION_DEFINED )) && (( $RESIZE_ROOTFS )); then
 					local sourceSDSize=$(calcSumSizeFromSFDISK "$SF_FILE")
 					local targetSDSize=$(blockdev --getsize64 $RESTORE_DEVICE)
@@ -4293,16 +4282,18 @@ function checksForPartitionBasedBackup() {
 		fi
 	done
 
-	local pn=( $(extractBootAndRootPartitionNames) )
-	local i
-	for ((i=0;i<${#pn[@]};i+=2)); do
-		local p=${pn[i]}
-		local d=${pn[$((i+1))]}
-		if [[ $d =~ /dev/sd ]]; then
-			writeToConsole $MSG_LEVEL_MINIMAL $MSG_EXTERNAL_PARTITION_NOT_SAVED "$p" "$d"
-			error=1
-		fi
-	done
+	if (( ! $REGRESSION_TEST )); then # skip test in regressiontest because in qemu /dev/mmcblk0 is a symlink to /dev/sda
+		local pn=( $(extractBootAndRootPartitionNames) )
+		local i
+		for ((i=0;i<${#pn[@]};i+=2)); do
+			local p=${pn[i]}
+			local d=${pn[$((i+1))]}
+			if [[ $d =~ /dev/sd ]]; then
+				writeToConsole $MSG_LEVEL_MINIMAL $MSG_EXTERNAL_PARTITION_NOT_SAVED "$p" "$d"
+				error=1
+			fi
+		done
+	fi
 
 	if (( $error )); then
 		exitError $RC_PARAMETER_ERROR
@@ -5482,7 +5473,7 @@ function doitRestore() {
 	logItem "Checking for partitionbasedbackup in $RESTOREFILE/*"
 	logCommand "ls -1 $RESTOREFILE*"
 
-	if  ls -1 "$RESTOREFILE"* | egrep "^(sd[a-z]([0-9]+)|mmcblk[0-9]+p[0-9]+).*" 2>/dev/null ; then
+	if  ls -1 "$RESTOREFILE"* | egrep -q "^(sd[a-z]([0-9]+)|mmcblk[0-9]+p[0-9]+).*" 2>>"$LOG_FILE" ; then
 		PARTITIONBASED_BACKUP=1
 	else
 		PARTITIONBASED_BACKUP=0
