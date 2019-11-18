@@ -57,11 +57,11 @@ IS_HOTFIX=$((! $? ))
 MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
 
-GIT_DATE="$Date: 2019-11-13 18:48:21 +0100$"
+GIT_DATE="$Date: 2019-11-18 20:59:51 +0100$"
 GIT_DATE_ONLY=${GIT_DATE/: /}
 GIT_DATE_ONLY=$(cut -f 2 -d ' ' <<< $GIT_DATE)
 GIT_TIME_ONLY=$(cut -f 3 -d ' ' <<< $GIT_DATE)
-GIT_COMMIT="$Sha1: a0940d3$"
+GIT_COMMIT="$Sha1: a7fc357$"
 GIT_COMMIT_ONLY=$(cut -f 2 -d ' ' <<< $GIT_COMMIT | sed 's/\$//')
 
 GIT_CODEVERSION="$MYSELF $VERSION, $GIT_DATE_ONLY/$GIT_TIME_ONLY - $GIT_COMMIT_ONLY"
@@ -258,6 +258,7 @@ RC_BEFORE_STOP_SERVICES_ERROR=123
 RC_EMAILPROG_ERROR=124
 RC_MISSING_PARTITION=125
 RC_UUIDS_NOT_UNIQUE=126
+RC_INCOMPLETE_PARMS=127
 
 tty -s
 INTERACTIVE=!$?
@@ -931,6 +932,27 @@ MSG_DE[$MSG_BACKUP_WARNING]="RBK0212W: Backup endete mit Warnungen. Siehe vorher
 MSG_MOUNT_ERROR=213
 MSG_EN[$MSG_MOUNT_ERROR]="RBK0213E: Mount %s to %s failed. RC %s."
 MSG_DE[$MSG_MOUNT_ERROR]="RBK0213E: Mount von %s an %s ist fehlerhaft."
+MSG_MISSING_SMART_RECYCLE_PARMS=214
+MSG_EN[$MSG_MISSING_SMART_RECYCLE_PARMS]="RBK0214E: Missing smart recycle parms in %s. Have to be four:Daily Weekly Monthly Yearly."
+MSG_DE[$MSG_MISSING_SMART_RECYCLE_PARMS]="RBK0214E: Missing smart recycle parms in %s. Es müssen vier sein: Täglich Wöchentlich Monatlich Jährlich"
+MSG_SMART_RECYCLE_PARM_INVALID=215
+MSG_EN[$MSG_SMART_RECYCLE_PARM_INVALID]="RBK0215E: Invalid smart recycle parameter %s in option '%s'."
+MSG_DE[$MSG_SMART_RECYCLE_PARM_INVALID]="RBK0215E: Ungültiger smart recycle Parameter %s in Option '%s'."
+MSG_APPLYING_BACKUP_STRATEGY_ONLY=216
+MSG_EN[$MSG_APPLYING_BACKUP_STRATEGY_ONLY]="RBK0216W: Applying backup strategy in %s only."
+MSG_DE[$MSG_APPLYING_BACKUP_STRATEGY_ONLY]="RBK0216W: Wende nur Backupstrategie in %s an."
+MSG_SMART_RECYCLE_FILES=217
+MSG_EN[$MSG_SMART_RECYCLE_FILES]="RBK0217I: %s backups will be smart recycled."
+MSG_DE[$MSG_SMART_RECYCLE_FILES]="RBK0217I: %s Backups werden smart recycled."
+MSG_SMART_APPLYING_BACKUP_STRATEGY=218
+MSG_EN[$MSG_SMART_APPLYING_BACKUP_STRATEGY]="RBK0218I: Applying smart backup strategy. Daily:%s Weekly:%s Monthly:%s Yearly:%s."
+MSG_DE[$MSG_SMART_APPLYING_BACKUP_STRATEGY]="RBK0218I: Wende smarte Backupstrategie an. Täglich:%s Wöchentlich:%s Monatlich:%s Jährlich:%s"
+MSG_SMART_RECYCLE_NO_FILES=219
+MSG_EN[$MSG_SMART_RECYCLE_NO_FILES]="RBK0219I: No backups will be smart recycled."
+MSG_DE[$MSG_SMART_RECYCLE_NO_FILES]="RBK0219I: Keine Backups werden smart recycled."
+MSG_SMART_RECYCLE_FILE_DELETED=220
+MSG_EN[$MSG_SMART_RECYCLE_FILE_DELETED]="RBK0220W: Smart backup strategy would delete %s."
+MSG_DE[$MSG_SMART_RECYCLE_FILE_DELETED]="RBK0220W: Smart Backup Strategie würde %s löschen."
 
 declare -A MSG_HEADER=( ['I']="---" ['W']="!!!" ['E']="???" )
 
@@ -1357,6 +1379,7 @@ function logOptions() {
 	logItem "Options: $INVOCATIONPARMS"
 	logItem "APPEND_LOG=$APPEND_LOG"
 	logItem "APPEND_LOG_OPTION=$APPEND_LOG_OPTION"
+	logItem "APPLY7412=$APPLY7412"
 	logItem "BACKUPPATH=$BACKUPPATH"
 	logItem "BACKUPTYPE=$BACKUPTYPE"
 	logItem "AFTER_STARTSERVICES=$AFTER_STARTSERVICES"
@@ -1400,6 +1423,9 @@ function logOptions() {
 	logItem "SENDER_EMAIL=$SENDER_EMAIL"
  	logItem "SKIP_DEPRECATED=$SKIP_DEPRECATED"
  	logItem "SKIPLOCALCHECK=$SKIPLOCALCHECK"
+ 	logItem "SMART_RECYCLE=$SMART_RECYCLE"
+ 	logItem "SMART_RECYCLE_DRYRUN=$SMART_RECYCLE_DRYRUN"
+ 	logItem "SMART_RECYCLE_OPTIONS=$SMART_RECYCLE_OPTIONS"
 	logItem "STARTSERVICES=$STARTSERVICES"
 	logItem "STOPSERVICES=$STOPSERVICES"
 	logItem "SYSTEMSTATUS=$SYSTEMSTATUS"
@@ -1511,6 +1537,12 @@ function initializeDefaultConfig() {
 	DEFAULT_MAIL_ON_ERROR_ONLY=0
 	# Version to suppress deprecated message, separated with spaces
 	DEFAULT_SKIP_DEPRECATED=""
+	# Smart recycle
+	DEFAULT_SMART_RECYCLE=0
+	# Smart recycle dryrun
+	DEFAULT_SMART_RECYCLE_DRYRUN=1
+	# Smart recycle parameters (daily, weekly, monthly and yearly)
+	DEFAULT_SMART_RECYCLE_OPTIONS="7 4 12 1"
 	# report uuid
 	DEFAULT_USE_UUID=1
 	# Check for back blocks when formating restore device (Will take a long time)
@@ -1529,6 +1561,8 @@ function initializeDefaultConfig() {
 	DEFAULT_UPDATE_UUIDS=0
 	# ignore partitions > 2 in normal mode
 	DEFAULT_IGNORE_ADDITIONAL_PARTITIONS=0
+	# apply 7412 backup cleanup - WARNING: will delete backups - only use if you know what you're doing
+	DEFAULT_APPLY7412=0
 
 	############# End default config section #############
 
@@ -1541,6 +1575,7 @@ function initializeConfig() {
 	# initialize options with defaults from configs if no command line arg was passed
 	[[ -z "$APPEND_LOG" ]] && APPEND_LOG="$DEFAULT_APPEND_LOG"
 	[[ -z "$APPEND_LOG_OPTION" ]] && APPEND_LOG_OPTION="$DEFAULT_APPEND_LOG_OPTION"
+	[[ -z "$APPLY7412" ]] && APPLY7412="$DEFAULT_APPLY7412"
 	[[ -z "$BACKUPPATH" ]] && BACKUPPATH="$DEFAULT_BACKUPPATH"
 	[[ -z "$BACKUPTYPE" ]] && BACKUPTYPE="$DEFAULT_BACKUPTYPE"
 	[[ -z "$AFTER_STARTSERVICES" ]] && AFTER_STARTSERVICES="$DEFAULT_AFTER_STARTSERVICES"
@@ -1579,6 +1614,9 @@ function initializeConfig() {
 	[[ -z "$RSYNC_BACKUP_OPTIONS" ]] && RSYNC_BACKUP_OPTIONS="$DEFAULT_RSYNC_BACKUP_OPTIONS"
 	[[ -z "$SENDER_EMAIL" ]] && SENDER_EMAIL="$DEFAULT_SENDER_EMAIL"
 	[[ -z "$SKIPLOCALCHECK" ]] && SKIPLOCALCHECK="$DEFAULT_SKIPLOCALCHECK"
+	[[ -z "$SMART_RECYCLE" ]] && SMART_RECYCLE="$DEFAULT_SMART_RECYCLE"
+	[[ -z "$SMART_RECYCLE_DRYRUN" ]] && SMART_RECYCLE_DRYRUN="$DEFAULT_SMART_RECYCLE_DRYRUN"
+	[[ -z "$SMART_RECYCLE_OPTIONS" ]] && SMART_RECYCLE_OPTIONS="$DEFAULT_SMART_RECYCLE_OPTIONS"
 	[[ -z "$STARTSERVICES" ]] && STARTSERVICES="$DEFAULT_STARTSERVICES"
 	[[ -z "$STOPSERVICES" ]] && STOPSERVICES="$DEFAULT_STOPSERVICES"
 	[[ -z "$SYSTEMSTATUS" ]] && SYSTEMSTATUS="$DEFAULT_SYSTEMSTATUS"
@@ -3826,6 +3864,98 @@ function restore() {
 
 }
 
+function applyBackupStrategy() {
+
+	logEntry $BACKUP_TARGETDIR
+
+	if (( $SMART_RECYCLE )); then
+
+		local p="${SMART_RECYCLE_PARMS[@]}"
+		logItem "SR Parms: $p"
+		SR_DAILY="${SMART_RECYCLE_PARMS[0]}"
+		SR_WEEKLY="${SMART_RECYCLE_PARMS[1]}"
+		SR_MONTHLY="${SMART_RECYCLE_PARMS[2]}"
+		SR_YEARLY="${SMART_RECYCLE_PARMS[3]}"
+		writeToConsole $MSG_LEVEL_MINIMAL $MSG_SMART_APPLYING_BACKUP_STRATEGY $SR_DAILY $SR_WEEKLY $SR_MONTHLY $SR_YEARLY
+
+		local btd="$(SR_listBackupsToDelete "$BACKUPTARGET_ROOT")"
+		if [[ -n "$btd" ]]; then
+			writeToConsole $MSG_LEVEL_DETAILED $MSG_SMART_RECYCLE_FILES "$(wc -l <<< "$btd")"
+			echo "$btd" | while read dir_to_delete; do
+				logItem "Recycling $BACKUPTARGET_ROOT/${dir_to_delete}"
+				if (( ! $SMART_RECYCLE_DRYRUN )); then
+					[[ -n $dir_to_delete ]] && rm -rf $BACKUPTARGET_ROOT/${dir_to_delete} # guard against whole backup dir deletion
+				else
+					[[ -n $dir_to_delete ]] && writeToConsole $MSG_LEVEL_MINIMAL $MSG_SMART_RECYCLE_FILE_DELETED "$BACKUPTARGET_ROOT/${dir_to_delete}"
+				fi
+			done
+		else
+			writeToConsole $MSG_LEVEL_DETAILED $MSG_SMART_RECYCLE_NO_FILES
+		fi
+
+	else
+
+		local bt="${BACKUPTYPE^^}"
+		local v="KEEPBACKUPS_${bt}"
+		local keepOverwrite="${!v}"
+
+		local keepBackups=$KEEPBACKUPS
+		(( $keepOverwrite != 0 )) && keepBackups=$keepOverwrite
+
+		if (( $keepBackups != -1 )); then
+			logItem "Deleting oldest directory in $BACKUPPATH"
+			logCommand "ls -d $BACKUPPATH/*"
+
+			writeToConsole $MSG_LEVEL_DETAILED $MSG_BACKUPS_KEPT "$keepBackups" "$BACKUPTYPE"
+
+			if (( ! $FAKE )); then
+				writeToConsole $MSG_LEVEL_DETAILED $MSG_CLEANUP_BACKUP_VERSION "$BACKUPPATH"
+				pushd "$BACKUPPATH" 1>/dev/null; ls -d *-$BACKUPTYPE-* 2>/dev/null| grep -vE "\.{log|msg}$" | head -n -$KEEPBACKUPS | xargs -I {} rm -rf "{}" 2>>"$LOG_FILE"; popd > /dev/null
+
+				local regex="\-([0-9]{8}\-[0-9]{6})\.(img|mbr|sfdisk|log)$"
+				local regexDD="\-dd\-backup\-([0-9]{8}\-[0-9]{6})\.img$"
+
+				pushd "$BACKUPPATH" 1>/dev/null
+				for imgFile in $(ls -d *.img *.mbr *.sfdisk *.log *.msg 2>/dev/null); do
+
+					if [[ $imgFile =~ $regexDD ]]; then
+						logItem "Skipping DD file $imgFile"
+						continue
+					fi
+
+					if [[ ! $imgFile =~ $regex ]]; then
+						logItem "Skipping $imgFile"
+						continue
+					else
+						logItem "Processing $imgFile"
+					fi
+
+					local date=${BASH_REMATCH[1]}
+					logItem "Extracted date: $date"
+
+					if [[ -z $date ]]; then
+						assert $LINENO "Unable to extract date from backup files"
+					fi
+					local file=$(ls -d *-*-backup-$date* 2>/dev/null| egrep -v "\.(log|msg|img|mbr|sfdisk)$");
+
+					if [[ -n $file ]];  then
+						logItem "Found backup for $imgFile"
+					else
+						logItem "Found NO backup for $imgFile - removing"
+						rm -f $imgFile &>>"$LOG_FILE"
+					fi
+				done
+				popd > /dev/null
+
+				logItem "post - ls$NL$(ls -d $BACKUPPATH/* 2>/dev/null)"
+			fi
+		else
+			writeToConsole $MSG_LEVEL_MINIMAL $MSG_ALL_BACKUPS_KEPT "$BACKUPTYPE"
+		fi
+	fi
+	logExit
+}
+
 function backup() {
 
 	logEntry
@@ -3911,65 +4041,7 @@ function backup() {
 	fi
 
 	if [[ $rc -eq 0 ]]; then
-
-		local bt="${BACKUPTYPE^^}"
-		local v="KEEPBACKUPS_${bt}"
-		local keepOverwrite="${!v}"
-
-		local keepBackups=$KEEPBACKUPS
-		(( $keepOverwrite != 0 )) && keepBackups=$keepOverwrite
-
-		if (( $keepBackups != -1 )); then
-			logItem "Deleting oldest directory in $BACKUPPATH"
-			logCommand "ls -d $BACKUPPATH/*"
-
-			writeToConsole $MSG_LEVEL_DETAILED $MSG_BACKUPS_KEPT "$keepBackups" "$BACKUPTYPE"
-
-			if (( ! $FAKE )); then
-				writeToConsole $MSG_LEVEL_DETAILED $MSG_CLEANUP_BACKUP_VERSION "$BACKUPPATH"
-				pushd "$BACKUPPATH" 1>/dev/null; ls -d *-$BACKUPTYPE-* 2>/dev/null| grep -vE "\.{log|msg}$" | head -n -$KEEPBACKUPS | xargs -I {} rm -rf "{}" 2>>"$LOG_FILE"; popd > /dev/null
-
-				local regex="\-([0-9]{8}\-[0-9]{6})\.(img|mbr|sfdisk|log)$"
-				local regexDD="\-dd\-backup\-([0-9]{8}\-[0-9]{6})\.img$"
-
-				pushd "$BACKUPPATH" 1>/dev/null
-				for imgFile in $(ls -d *.img *.mbr *.sfdisk *.log *.msg 2>/dev/null); do
-
-					if [[ $imgFile =~ $regexDD ]]; then
-						logItem "Skipping DD file $imgFile"
-						continue
-					fi
-
-					if [[ ! $imgFile =~ $regex ]]; then
-						logItem "Skipping $imgFile"
-						continue
-					else
-						logItem "Processing $imgFile"
-					fi
-
-					local date=${BASH_REMATCH[1]}
-					logItem "Extracted date: $date"
-
-					if [[ -z $date ]]; then
-						assert $LINENO "Unable to extract date from backup files"
-					fi
-					local file=$(ls -d *-*-backup-$date* 2>/dev/null| egrep -v "\.(log|msg|img|mbr|sfdisk)$");
-
-					if [[ -n $file ]];  then
-						logItem "Found backup for $imgFile"
-					else
-						logItem "Found NO backup for $imgFile - removing"
-						rm -f $imgFile &>>"$LOG_FILE"
-					fi
-				done
-				popd > /dev/null
-
-				logItem "post - ls$NL$(ls -d $BACKUPPATH/* 2>/dev/null)"
-			fi
-		else
-			writeToConsole $MSG_LEVEL_MINIMAL $MSG_ALL_BACKUPS_KEPT "$BACKUPTYPE"
-		fi
-
+		applyBackupStrategy
 	fi
 
 	callExtensions $POST_BACKUP_EXTENSION $rc
@@ -4645,6 +4717,28 @@ function doitBackup() {
 		fi
 	done
 
+	eval "SMART_RECYCLE_PARMS=( $SMART_RECYCLE_OPTIONS )"
+	local p="${SMART_RECYCLE_PARMS[@]}"
+	logItem "SMART_RECYCLE_PARMS: $p"
+	logItem "smart recycle parms: ${#SMART_RECYCLE_PARMS[@]}"
+
+	if (( ${#SMART_RECYCLE_PARMS[@]} != 4 )); then
+		writeToConsole $MSG_LEVEL_MINIMAL $MSG_MISSING_SMART_RECYCLE_PARMS "${SMART_RECYCLE_PARMS[@]}"
+		mentionHelp
+		exitError $RC_PARAMETER_ERROR
+	fi
+
+	local sb
+	if (( $SMART_RECYCLE )); then
+		for sb in "${SMART_RECYCLE_PARMS[@]}"; do
+			if [[ ! $sb =~ ^[0-9]+$ ]] || (( $sb > 365 )); then
+				writeToConsole $MSG_LEVEL_MINIMAL $MSG_SMART_RECYCLE_PARM_INVALID "$sb" "$SMART_RECYCLE_OPTIONS"
+				mentionHelp
+				exitError $RC_PARAMETER_ERROR
+			fi
+		done
+	fi
+
 	if (( $ZIP_BACKUP_TYPE_INVALID )); then
 		writeToConsole $MSG_LEVEL_MINIMAL $MSG_UNKNOWN_BACKUPTYPE_FOR_ZIP $BACKUPTYPE
 		mentionHelp
@@ -4745,7 +4839,13 @@ function doitBackup() {
 
 	writeToConsole $MSG_LEVEL_MINIMAL $MSG_USING_BACKUPPATH "$BACKUPPATH"
 
-	backup
+	if (( $APPLY7412 && $SMART_RECYCLE )); then # just apply backup strategy to test smart recycle
+		writeToConsole $MSG_LEVEL_MINIMAL $MSG_APPLYING_BACKUP_STRATEGY_ONLY "$BACKUPPATH/$(hostname)"
+		applyBackupStrategy
+		rc=0
+	else
+		backup
+	fi
 
 	logExit
 
@@ -5662,7 +5762,7 @@ function mountAndCheck() { # device mountpoint
 	logEntry "$1 - $2"
 	mount "$1" "$2" &>>"$LOG_FILE"
 	local rc=$?
-	if (( ! $rc )); then
+	if (( $rc )); then
 		writeToConsole $MSG_LEVEL_MINIMAL $MSG_MOUNT_ERROR "$1" "$2" "$rc"
 		logExit $rc
 		exitError $RC_MISC_ERROR
@@ -5837,6 +5937,95 @@ function synchronizeCmdlineAndfstab() {
 	logExit
 }
 
+function SR_listYearlyBackups() { # directory
+	logEntry $SR_YEARLY $1
+	if (( $SR_YEARLY > 0 )); then
+		local i
+		for i in $(seq 0 $(( $SR_YEARLY-1)) ); do
+			# today is 20191117
+			# date +%Y -d "1 year ago" -> 2018
+			f_d=$(ls $1 | egrep "\-backup\-$(date +%Y -d "${i} year ago")[0-9]{2}[0-9]{2}" | sort -u | head -n 1 | cut -d'-' -f 4) # grab datefield (cut) for the first day for each year
+			ls $1 | egrep "\-backup\-$f_d" | sort -ur | head -n 1 # and use the last made backup (includig time sort !) from that day
+		done
+	fi
+	logExit
+}
+
+function SR_listMonthlyBackups() { # directory
+	logEntry $SR_MONTHLY $1
+	if (( $SR_MONTHLY > 0 )); then
+		local i
+		for i in $(seq 0 $(($SR_MONTHLY-1)) ); do
+			# ... error in date ... see http://bashworkz.com/linux-date-problem-1-month-ago-date-bug/
+			# ls ${BACKUPPATH} | egrep "\-backup\-$(date +%Y%m -d "${i} month ago")[0-9]{2}" | sort -u | head -n 1
+			# today is 20191117
+			# date -d "$(date +%Y%m15) -1 month" +%Y%m -> 201910
+			local d=$(date -d "$(date +%Y%m15) -${i} month" +%Y%m)
+			f_d=$(ls $1 | egrep "\-backup\-$d[0-9]{2}" | sort -u | head -n 1 | cut -d'-' -f 4) # grab datefield (cut) for the first day for each month
+			ls $1 | egrep "\-backup\-$f_d" | sort -ur | head -n 1 # and use the last made backup (includig time sort !) from that day
+		done
+	fi
+	logExit
+}
+
+function SR_listWeeklyBackups() { # directory
+	logEntry $SR_WEEKLY $1
+	if (( $SR_WEEKLY > 0 )); then
+		local i
+		for i in $(seq 0 $(( $SR_WEEKLY-1)) ); do
+			# today is 20191117
+			# date +%Y%m%d -d "last monday -1 weeks" -> 20191104
+			f_d=$(ls $1 | grep "\-backup\-$(date +%Y%m%d -d "last monday -${i} weeks")" | sort -u | head -n 1 | cut -d'-' -f 4) # grab datefield (cut) for the first day for each week
+			ls $1 | egrep "\-backup\-$f_d" | sort -ur | head -n 1 # and use the last made backup (includig time sort !) from that day
+		done
+	fi
+	logExit
+}
+
+function SR_listDailyBackups() { # directory
+	logEntry $SR_DAILY $1
+	if (( $SR_DAILY > 0 )); then
+		local i
+		for i in $(seq 0 $(( $SR_DAILY-1)) ); do
+			# today is 20191117
+			# date +%Y%m%d -d "-1 day" -> 20191116
+			ls $1 | grep "\-backup\-$(date +%Y%m%d -d "-${i} day")" | sort -ur | head -n 1 # use latest Backup that was made each day
+		done
+	fi
+	logExit
+}
+
+function SR_getAllBackups() { # directory
+	logEntry $1
+	local yb="$(SR_listYearlyBackups $1)"
+	logItem "Yearly backups: $(wc -l <<< "$yb")$NL$yb"
+	echo "$yb"
+	local mb="$(SR_listMonthlyBackups $1)"
+	logItem "Monthly backups: $(wc -l <<< "$mb")$NL $mb"
+	echo "$mb"
+	local wb="$(SR_listWeeklyBackups $1)"
+	logItem "Weekly backups: $(wc -l <<< "$wb")$NL$wb"
+	echo "$wb"
+	local db="$(SR_listDailyBackups $1)"
+	logItem "Daily backups: $(wc -l <<< "$db")$NL$db"
+	echo "$db"
+	logExit
+}
+
+function SR_listUniqueBackups() { #directory
+	logEntry $1
+	local r="$(SR_getAllBackups $1 | sort -u)"
+	echo "$r"
+	logExit "$r"
+}
+
+function SR_listBackupsToDelete() { # directory
+	logEntry $1
+	local r="$(ls $1 | grep -v -e "$(echo -n $(SR_listUniqueBackups $1) | sed "s/ /\\\|/g")")"
+	echo "$r"
+	logExit "$r"
+}
+
 function check4RequiredCommands() {
 
 	logEntry
@@ -6003,22 +6192,28 @@ function mentionHelp() {
 
 function checkOptionParameter() { # option parameter
 
+	logEntry "$@"
+
 	local nospaces="${2/ /}"
 	if [[ "$nospaces" != "$2" ]]; then
 		echo "$2"
+		logExit "$2"
 		return 0
 	fi
 
 	if [[ "${2:0:1}" == "\\" ]]; then
 		echo "${2:1}"
+		logExit "${2:1}"
 		return 0
 	elif [[ "$2" =~ ^(\-|\+|\-\-|\+\+) || -z $2 ]]; then
 		writeToConsole $MSG_LEVEL_MINIMAL $MSG_OPTION_REQUIRES_PARAMETER "$1"
 		writeToConsole $MSG_LEVEL_MINIMAL $MSG_MENTION_HELP $MYSELF
 		echo ""
+		logExit ""
 		return 1
 	fi
 	echo "$2"
+	logExit "$2"
 	return 0
 }
 
@@ -6108,6 +6303,10 @@ while (( "$#" )); do
 
 	-9|-9[-+])
 	  FAKE_BACKUPS=$(getEnableDisableOption "$1"); shift 1
+	  ;;
+
+	-7412|-7412[-+]) # flag to apply smart recycle code for regression test
+	  APPLY7412=$(getEnableDisableOption "$1"); shift 1
 	  ;;
 
 	-a)
@@ -6337,6 +6536,20 @@ while (( "$#" )); do
 	  FORCE_UPDATE=$(getEnableDisableOption "$1"); shift 1
 	  ;;
 
+	--smartRecycle|--smartRecycle[+-])
+	  SMART_RECYCLE=$(getEnableDisableOption "$1"); shift 1
+	  ;;
+
+	--smartRecycleDryrun|--smartRecycleDryrun[+-])
+	  SMART_RECYCLE_DRYRUN=$(getEnableDisableOption "$1"); shift 1
+	  ;;
+
+	--smartRecycleOptions)
+	  o=$(checkOptionParameter "$1" "$2")
+	  (( $? )) && exitError $RC_PARAMETER_ERROR
+	  SMART_RECYCLE_OPTIONS="$o"; shift 2
+	  ;;
+
 	--systemstatus|--systemstatus[+-])
 	  SYSTEMSTATUS=$(getEnableDisableOption "$1"); shift 1
 	  if ! which lsof &>/dev/null; then
@@ -6404,7 +6617,7 @@ while (( "$#" )); do
 	  ZIP_BACKUP=$(getEnableDisableOption "$1"); shift 1
 	  ;;
 
-	-Z|-Z[-+])
+	-Z|-Z[-+]) # flag to enable regession test pathes
 	  REGRESSION_TEST=$(getEnableDisableOption "$1"); shift 1
 	  ;;
 
