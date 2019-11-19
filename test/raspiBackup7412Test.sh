@@ -84,7 +84,7 @@ done
 
 ./raspiBackup.sh --smartRecycleOptions "7 4 12 1" --smartRecycle --smartRecycleDryrun- -t rsync -F -x -c -e $(<email.conf) -Z -m 1 -l 1 -L 3 -o : -a : 7412backups
 
-f=$(ls 7412backups/obelix.framp.de/ | wc -l)
+f=$(ls 7412backups/obelix/ | wc -l)
 
 if (( f != 23 )); then
 	echo "???: Expected 23 but found $f backups"
