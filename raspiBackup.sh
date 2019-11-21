@@ -6,6 +6,9 @@
 #
 # Visit http://www.linux-tips-and-tricks.de/raspiBackup for latest code and other details
 #
+# Smart recycle backup strategy inspired by https://opensource.com/article/18/8/automate-backups-raspberry-pi but
+# enhanced to support multiple backups in the given timeframe of days, weeks, months and years
+#
 #######################################################################################################################
 #
 #    Copyright (C) 2013-2019 framp at linux-tips-and-tricks dot de
@@ -57,11 +60,11 @@ IS_HOTFIX=$((! $? ))
 MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
 
-GIT_DATE="$Date: 2019-11-18 20:59:51 +0100$"
+GIT_DATE="$Date: 2019-11-21 17:01:59 +0100$"
 GIT_DATE_ONLY=${GIT_DATE/: /}
 GIT_DATE_ONLY=$(cut -f 2 -d ' ' <<< $GIT_DATE)
 GIT_TIME_ONLY=$(cut -f 3 -d ' ' <<< $GIT_DATE)
-GIT_COMMIT="$Sha1: a7fc357$"
+GIT_COMMIT="$Sha1: ad95974$"
 GIT_COMMIT_ONLY=$(cut -f 2 -d ' ' <<< $GIT_COMMIT | sed 's/\$//')
 
 GIT_CODEVERSION="$MYSELF $VERSION, $GIT_DATE_ONLY/$GIT_TIME_ONLY - $GIT_COMMIT_ONLY"
@@ -5941,11 +5944,11 @@ function SR_listYearlyBackups() { # directory
 	logEntry $SR_YEARLY $1
 	if (( $SR_YEARLY > 0 )); then
 		local i
-		for i in $(seq 0 $(( $SR_YEARLY-1)) ); do
+		for ((i=0;i<=$(( $SR_YEARLY-1 ));i++)); do
 			# today is 20191117
-			# date +%Y -d "1 year ago" -> 2018
-			f_d=$(ls $1 | egrep "\-backup\-$(date +%Y -d "${i} year ago")[0-9]{2}[0-9]{2}" | sort -u | head -n 1 | cut -d'-' -f 4) # grab datefield (cut) for the first day for each year
-			ls $1 | egrep "\-backup\-$f_d" | sort -ur | head -n 1 # and use the last made backup (includig time sort !) from that day
+			# date +%Y -d "0 year ago" -> 2019
+			local d=$(date +%Y -d "${i} year ago")
+			ls $1 | egrep "\-backup\-$d[0-9]{2}[0-9]{2}" | sort -ur | tail -n 1 # find earliest yearly backup
 		done
 	fi
 	logExit
@@ -5955,14 +5958,13 @@ function SR_listMonthlyBackups() { # directory
 	logEntry $SR_MONTHLY $1
 	if (( $SR_MONTHLY > 0 )); then
 		local i
-		for i in $(seq 0 $(($SR_MONTHLY-1)) ); do
+		for ((i=0;i<=$(( $SR_MONTHLY-1 ));i++)); do
 			# ... error in date ... see http://bashworkz.com/linux-date-problem-1-month-ago-date-bug/
 			# ls ${BACKUPPATH} | egrep "\-backup\-$(date +%Y%m -d "${i} month ago")[0-9]{2}" | sort -u | head -n 1
 			# today is 20191117
-			# date -d "$(date +%Y%m15) -1 month" +%Y%m -> 201910
-			local d=$(date -d "$(date +%Y%m15) -${i} month" +%Y%m)
-			f_d=$(ls $1 | egrep "\-backup\-$d[0-9]{2}" | sort -u | head -n 1 | cut -d'-' -f 4) # grab datefield (cut) for the first day for each month
-			ls $1 | egrep "\-backup\-$f_d" | sort -ur | head -n 1 # and use the last made backup (includig time sort !) from that day
+			# date -d "$(date +%Y%m15) -0 month" +%Y%m -> 201911
+			local d=$(date -d "$(date +%Y%m15) -${i} month" +%Y%m) # get month
+			ls $1 | egrep "\-backup\-$d[0-9]{2}" | sort -ur | tail -n 1 # find earlies monthly backup
 		done
 	fi
 	logExit
@@ -5970,13 +5972,24 @@ function SR_listMonthlyBackups() { # directory
 
 function SR_listWeeklyBackups() { # directory
 	logEntry $SR_WEEKLY $1
+	local d
 	if (( $SR_WEEKLY > 0 )); then
 		local i
-		for i in $(seq 0 $(( $SR_WEEKLY-1)) ); do
-			# today is 20191117
-			# date +%Y%m%d -d "last monday -1 weeks" -> 20191104
-			f_d=$(ls $1 | grep "\-backup\-$(date +%Y%m%d -d "last monday -${i} weeks")" | sort -u | head -n 1 | cut -d'-' -f 4) # grab datefield (cut) for the first day for each week
-			ls $1 | egrep "\-backup\-$f_d" | sort -ur | head -n 1 # and use the last made backup (includig time sort !) from that day
+		for ((i=0;i<=$(( $SR_WEEKLY-1));i++)); do
+			# assume today is 20191119 (tue) or wed-sun
+			# last monday is date +%Y%m%d -d "last monday -1...n-1 weeks" -> 20191111
+			local last="last"
+			# assume today is 20191118 (mon)
+			# last monday is date +%Y%m%d -d "monday -1...n-1 weeks" -> 20191111
+			if (( $(date +"%u") == 1 )); then
+				last=""
+			fi
+			local mon=$(date +%Y%m%d -d "$last monday -${i} weeks") # calculate monday of week
+			local dl=""
+			for ((d=0;d<=6;d++)); do	# now build list of week days of week (mon-sun)
+				dl="$(date +%Y%m%d -d "$mon + $d day") $dl"
+			done
+			ls $1 | grep -e "$(echo -n $dl | sed "s/ /\\\|/g")" | sort -ur | tail -n 1 # use earliest backup of this week
 		done
 	fi
 	logExit
@@ -5986,10 +5999,11 @@ function SR_listDailyBackups() { # directory
 	logEntry $SR_DAILY $1
 	if (( $SR_DAILY > 0 )); then
 		local i
-		for i in $(seq 0 $(( $SR_DAILY-1)) ); do
+		for ((i=0;i<=$(( $SR_DAILY-1));i++)); do
 			# today is 20191117
 			# date +%Y%m%d -d "-1 day" -> 20191116
-			ls $1 | grep "\-backup\-$(date +%Y%m%d -d "-${i} day")" | sort -ur | head -n 1 # use latest Backup that was made each day
+			local d=$(date +%Y%m%d -d "-${i} day") # get day
+			ls $1 | grep "\-backup\-$d" | sort -ur | head -n 1 # find most current backup of this day
 		done
 	fi
 	logExit
