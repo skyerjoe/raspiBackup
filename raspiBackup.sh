@@ -6,8 +6,8 @@
 #
 # Visit http://www.linux-tips-and-tricks.de/raspiBackup for latest code and other details
 #
-# Smart recycle backup strategy inspired by https://opensource.com/article/18/8/automate-backups-raspberry-pi but
-# enhanced to support multiple backups in the given timeframe of days, weeks, months and years
+# Smart recycle backup strategy inspired by https://opensource.com/article/18/8/automate-backups-raspberry-pi and
+# enhanced to support multiple backups in a given timeframe of days, weeks, months and years
 #
 #######################################################################################################################
 #
@@ -60,11 +60,11 @@ IS_HOTFIX=$((! $? ))
 MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
 
-GIT_DATE="$Date: 2019-11-21 17:01:59 +0100$"
+GIT_DATE="$Date: 2019-11-21 21:59:45 +0100$"
 GIT_DATE_ONLY=${GIT_DATE/: /}
 GIT_DATE_ONLY=$(cut -f 2 -d ' ' <<< $GIT_DATE)
 GIT_TIME_ONLY=$(cut -f 3 -d ' ' <<< $GIT_DATE)
-GIT_COMMIT="$Sha1: ad95974$"
+GIT_COMMIT="$Sha1: a07ec73$"
 GIT_COMMIT_ONLY=$(cut -f 2 -d ' ' <<< $GIT_COMMIT | sed 's/\$//')
 
 GIT_CODEVERSION="$MYSELF $VERSION, $GIT_DATE_ONLY/$GIT_TIME_ONLY - $GIT_COMMIT_ONLY"
@@ -945,17 +945,20 @@ MSG_APPLYING_BACKUP_STRATEGY_ONLY=216
 MSG_EN[$MSG_APPLYING_BACKUP_STRATEGY_ONLY]="RBK0216W: Applying backup strategy in %s only."
 MSG_DE[$MSG_APPLYING_BACKUP_STRATEGY_ONLY]="RBK0216W: Wende nur Backupstrategie in %s an."
 MSG_SMART_RECYCLE_FILES=217
-MSG_EN[$MSG_SMART_RECYCLE_FILES]="RBK0217I: %s backups will be smart recycled."
-MSG_DE[$MSG_SMART_RECYCLE_FILES]="RBK0217I: %s Backups werden smart recycled."
+MSG_EN[$MSG_SMART_RECYCLE_FILES]="RBK0217I: %s backups will be smart recycled. %s backups will be kept."
+MSG_DE[$MSG_SMART_RECYCLE_FILES]="RBK0217I: %s Backups werden smart recycled. %s Backups werden aufgehoben."
 MSG_SMART_APPLYING_BACKUP_STRATEGY=218
 MSG_EN[$MSG_SMART_APPLYING_BACKUP_STRATEGY]="RBK0218I: Applying smart backup strategy. Daily:%s Weekly:%s Monthly:%s Yearly:%s."
 MSG_DE[$MSG_SMART_APPLYING_BACKUP_STRATEGY]="RBK0218I: Wende smarte Backupstrategie an. Täglich:%s Wöchentlich:%s Monatlich:%s Jährlich:%s"
 MSG_SMART_RECYCLE_NO_FILES=219
 MSG_EN[$MSG_SMART_RECYCLE_NO_FILES]="RBK0219I: No backups will be smart recycled."
 MSG_DE[$MSG_SMART_RECYCLE_NO_FILES]="RBK0219I: Keine Backups werden smart recycled."
-MSG_SMART_RECYCLE_FILE_DELETED=220
-MSG_EN[$MSG_SMART_RECYCLE_FILE_DELETED]="RBK0220W: Smart backup strategy would delete %s."
-MSG_DE[$MSG_SMART_RECYCLE_FILE_DELETED]="RBK0220W: Smart Backup Strategie würde %s löschen."
+MSG_SMART_RECYCLE_FILE_WOULD_BE_DELETED=220
+MSG_EN[$MSG_SMART_RECYCLE_FILE_WOULD_BE_DELETED]="RBK0220W: Smart backup strategy would delete %s."
+MSG_DE[$MSG_SMART_RECYCLE_FILE_WOULD_BE_DELETED]="RBK0220W: Smart Backup Strategie würde %s Backup löschen."
+MSG_SMART_RECYCLE_FILE_DELETE=221
+MSG_EN[$MSG_SMART_RECYCLE_FILE_DELETE]="RBK0221I: Smart backup strategy deletes %s."
+MSG_DE[$MSG_SMART_RECYCLE_FILE_DELETE]="RBK0220I: Smart Backup Strategie löscht Backup %s."
 
 declare -A MSG_HEADER=( ['I']="---" ['W']="!!!" ['E']="???" )
 
@@ -3881,19 +3884,28 @@ function applyBackupStrategy() {
 		SR_YEARLY="${SMART_RECYCLE_PARMS[3]}"
 		writeToConsole $MSG_LEVEL_MINIMAL $MSG_SMART_APPLYING_BACKUP_STRATEGY $SR_DAILY $SR_WEEKLY $SR_MONTHLY $SR_YEARLY
 
+		local allBackups="$(ls -1 $BACKUPTARGET_ROOT)"
+		local numAllBackups=$(wc -l <<< "$allBackups")
+
 		local btd="$(SR_listBackupsToDelete "$BACKUPTARGET_ROOT")"
+
 		if [[ -n "$btd" ]]; then
-			writeToConsole $MSG_LEVEL_DETAILED $MSG_SMART_RECYCLE_FILES "$(wc -l <<< "$btd")"
+
+			local numbtd=$(wc -l <<< "$btd")
+			local keepBackups=$(( $numAllBackups - $numbtd ))
+
+			writeToConsole $MSG_LEVEL_DETAILED $MSG_SMART_RECYCLE_FILES "$numbtd" "$keepBackups"
 			echo "$btd" | while read dir_to_delete; do
 				logItem "Recycling $BACKUPTARGET_ROOT/${dir_to_delete}"
 				if (( ! $SMART_RECYCLE_DRYRUN )); then
+					writeToConsole $MSG_LEVEL_DETAILED $MSG_SMART_RECYCLE_FILE_DELETE "$BACKUPTARGET_ROOT/${dir_to_delete}"
 					[[ -n $dir_to_delete ]] && rm -rf $BACKUPTARGET_ROOT/${dir_to_delete} # guard against whole backup dir deletion
 				else
-					[[ -n $dir_to_delete ]] && writeToConsole $MSG_LEVEL_MINIMAL $MSG_SMART_RECYCLE_FILE_DELETED "$BACKUPTARGET_ROOT/${dir_to_delete}"
+					[[ -n $dir_to_delete ]] && writeToConsole $MSG_LEVEL_MINIMAL $MSG_SMART_RECYCLE_FILE_WOULD_BE_DELETED "$BACKUPTARGET_ROOT/${dir_to_delete}"
 				fi
 			done
 		else
-			writeToConsole $MSG_LEVEL_DETAILED $MSG_SMART_RECYCLE_NO_FILES
+			writeToConsole $MSG_LEVEL_MINIMAL $MSG_SMART_RECYCLE_NO_FILES
 		fi
 
 	else
