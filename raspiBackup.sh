@@ -60,11 +60,11 @@ IS_HOTFIX=$((! $? ))
 MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
 
-GIT_DATE="$Date: 2019-11-15 11:55:29 +0100$"
+GIT_DATE="$Date: 2019-11-15 11:54:44 +0100$"
 GIT_DATE_ONLY=${GIT_DATE/: /}
 GIT_DATE_ONLY=$(cut -f 2 -d ' ' <<< $GIT_DATE)
 GIT_TIME_ONLY=$(cut -f 3 -d ' ' <<< $GIT_DATE)
-GIT_COMMIT="$Sha1: 51b67df$"
+GIT_COMMIT="$Sha1: 464ae93$"
 GIT_COMMIT_ONLY=$(cut -f 2 -d ' ' <<< $GIT_COMMIT | sed 's/\$//')
 
 GIT_CODEVERSION="$MYSELF $VERSION, $GIT_DATE_ONLY/$GIT_TIME_ONLY - $GIT_COMMIT_ONLY"
@@ -959,6 +959,9 @@ MSG_DE[$MSG_SMART_RECYCLE_FILE_WOULD_BE_DELETED]="RBK0220W: Smart Backup Strateg
 MSG_SMART_RECYCLE_FILE_DELETE=221
 MSG_EN[$MSG_SMART_RECYCLE_FILE_DELETE]="RBK0221I: Smart backup strategy deletes %s."
 MSG_DE[$MSG_SMART_RECYCLE_FILE_DELETE]="RBK0220I: Smart Backup Strategie löscht Backup %s."
+MSG_SMART_RECYCLE_FILE_WOULD_BE_KEPT=222
+MSG_EN[$MSG_SMART_RECYCLE_FILE_WOULD_BE_KEPT]="RBK0222W: Smart backup strategy would keep %s."
+MSG_DE[$MSG_SMART_RECYCLE_FILE_WOULD_BE_KEPT]="RBK0222W: Smart Backup Strategie würde %s Backup behalten."
 
 declare -A MSG_HEADER=( ['I']="---" ['W']="!!!" ['E']="???" )
 
@@ -3868,6 +3871,8 @@ function applyBackupStrategy() {
 
 	if (( $SMART_RECYCLE )); then
 
+		local dir_to_delete dir_to_keep
+
 		local p="${SMART_RECYCLE_PARMS[@]}"
 		logItem "SR Parms: $p"
 		SR_DAILY="${SMART_RECYCLE_PARMS[0]}"
@@ -3876,17 +3881,17 @@ function applyBackupStrategy() {
 		SR_YEARLY="${SMART_RECYCLE_PARMS[3]}"
 		writeToConsole $MSG_LEVEL_MINIMAL $MSG_SMART_APPLYING_BACKUP_STRATEGY $SR_DAILY $SR_WEEKLY $SR_MONTHLY $SR_YEARLY
 
-		local allBackups="$(ls -1 $BACKUPTARGET_ROOT)"
-		local numAllBackups=$(wc -l <<< "$allBackups")
+
+		local keptBackups="$(SR_listUniqueBackups $BACKUPTARGET_ROOT)"
+		local numKeptBackups=$(wc -l <<< "$keptBackups")
 
 		local btd="$(SR_listBackupsToDelete "$BACKUPTARGET_ROOT")"
 
 		if [[ -n "$btd" ]]; then
 
 			local numbtd=$(wc -l <<< "$btd")
-			local keepBackups=$(( $numAllBackups - $numbtd ))
 
-			writeToConsole $MSG_LEVEL_DETAILED $MSG_SMART_RECYCLE_FILES "$numbtd" "$keepBackups"
+			writeToConsole $MSG_LEVEL_DETAILED $MSG_SMART_RECYCLE_FILES "$numbtd" "$keptBackups"
 			echo "$btd" | while read dir_to_delete; do
 				logItem "Recycling $BACKUPTARGET_ROOT/${dir_to_delete}"
 				if (( ! $SMART_RECYCLE_DRYRUN )); then
@@ -3898,6 +3903,12 @@ function applyBackupStrategy() {
 			done
 		else
 			writeToConsole $MSG_LEVEL_MINIMAL $MSG_SMART_RECYCLE_NO_FILES
+		fi
+
+		if (( $SMART_RECYCLE_DRYRUN )); then
+			echo "$keptBackups" | while read dir_to_keep; do
+				[[ -n $dir_to_keep ]] && writeToConsole $MSG_LEVEL_MINIMAL $MSG_SMART_RECYCLE_FILE_WOULD_BE_KEPT "$BACKUPTARGET_ROOT/${dir_to_keep}"
+			done
 		fi
 
 	else
