@@ -45,9 +45,10 @@ BACKUP_ROOT_DIR="/disks/bigdata"
 BACKUP_MOUNT_POINT="obelix:$BACKUP_ROOT_DIR"
 BACKUP_DIR="raspibackupTest"
 BOOT_ONLY=0
-KEEP_VM=0
-RASPBIAN_OS="stretch" # wheezy
-START_NOMMCBLK=0
+KEEP_VM=1
+RASPBIAN_OS="wheezy"
+RASPBIAN_OS="stretch"
+START_NOMMCBLK=1
 
 (( $START_NOMMCBLK )) && echo "Starting no MMCBLK image"
 

@@ -60,11 +60,11 @@ IS_HOTFIX=$((! $? ))
 MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
 
-GIT_DATE="$Date: 2019-11-15 11:54:44 +0100$"
+GIT_DATE="$Date: 2019-11-26 22:03:26 +0100$"
 GIT_DATE_ONLY=${GIT_DATE/: /}
 GIT_DATE_ONLY=$(cut -f 2 -d ' ' <<< $GIT_DATE)
 GIT_TIME_ONLY=$(cut -f 3 -d ' ' <<< $GIT_DATE)
-GIT_COMMIT="$Sha1: 464ae93$"
+GIT_COMMIT="$Sha1: 5263054$"
 GIT_COMMIT_ONLY=$(cut -f 2 -d ' ' <<< $GIT_COMMIT | sed 's/\$//')
 
 GIT_CODEVERSION="$MYSELF $VERSION, $GIT_DATE_ONLY/$GIT_TIME_ONLY - $GIT_COMMIT_ONLY"
@@ -4471,9 +4471,13 @@ function inspect4Backup() {
 	logCommand "ls -1 /dev/sd*"
 	logItem "mountpoint /boot: $(mountpoint -d /boot) mountpoint /: $(mountpoint -d /)"
 
-	if (( $REGRESSION_TEST || $RESTORE )); then
+	if (( $REGRESSION_TEST )); then
+		[[ -e /dev/sda ]] && BOOT_DEVICE="sda"
+		[[ -e /dev/mmcblk0 ]] && BOOT_DEVICE="mmcblk0"
+		logItem "Force BOOT_DEVICE to $BOOT_DEVICE"
+	elif (( $RESTORE )); then
 		BOOT_DEVICE="mmcblk0"
-
+		logItem "Force BOOT_DEVICE to $BOOT_DEVICE"
 	else
 
 		if ! areDevicesUnique; then
