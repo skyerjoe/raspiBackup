@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash +x
 #######################################################################################################################
 #
 # raspiBackup backup creation script for backup regression test
@@ -24,9 +24,6 @@
 
 DEBUG=1
 
-MOUNT_POINT=${1:-"obelix:/disks/bigdata/"}
-BACKUP_PATH=${2:-"raspibackupTest"}
-
 BACKUP_PATH="/mnt/$BACKUP_PATH"
 
 BACKUPTYPE_DD="dd"
@@ -34,7 +31,10 @@ BACKUPTYPE_DDZ="ddz"
 BACKUPTYPE_TAR="tar"
 BACKUPTYPE_TGZ="tgz"
 BACKUPTYPE_RSYNC="rsync"
-declare -A FILE_EXTENSION=( [$BACKUPTYPE_DD]="img" [$BACKUPTYPE_DDZ]="img.gz" [$BACKUPTYPE_RSYNC]="img" [$BACKUPTYPE_TGZ]="tgz" [$BACKUPTYPE_TAR]="tar" )
+declare -A FILE_EXTENSION=( [$BACKUPTYPE_DD]="img" [$BACKUPTYPE_DDZ]="img.gz" [$BACKUPTYPE_RSYNC]="[it]mg" [$BACKUPTYPE_TGZ]="tgz" [$BACKUPTYPE_TAR]="tar" )
+
+BOOTMODE_DD="-B-"
+BOOTMODE_TAR="-B+"
 
 PARTITIONS_PER_BACKUP=2
 
@@ -42,15 +42,21 @@ MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
 
 PARMS=" -L 2 -l 1 -m 1 -Z"
-#PARMS=" -L 2 -l 1 -m 1 -Z -9"
 
 # all backups have 2 backups each
 
-EXECUTE_TESTS=0			# true/false
-CREATE_BACKUPS=1		# true/false
-CREATE_ANOTHER_BACKUP=0	# true/false
+EXECUTE_TESTS=0
+CREATE_BACKUPS=1
+CREATE_ANOTHER_BACKUP=0
 KEEP_BACKUPS=1
 NUMBER_OF_BACKUPS=1
+
+MOUNT_POINT=${1:-"obelix:/disks/bigdata/"}
+BACKUP_PATH=${2:-"raspibackupTest"}
+ENVIRONMENT=${3:-"SD USB SDONLY"}
+TYPES_TO_TEST=${4:-"dd ddz tar tgz rsync"}
+MODES_TO_TEST=${5:-"N P"}
+BOOT_MODES=${6:-"$BOOTMODE_DD $BOOTMODE_TAR"}
 
 USE_V5=0
 USE_V6=0
@@ -60,18 +66,7 @@ declare -A processedFiles
 
 LOG_FILE="$MYNAME.log"
 
-# use newlines as item separator !!!
-TYPES_TO_TEST="dd
-ddz
-tar
-tgz
-rsync"
-
-MODES_TO_TEST="N
-P"
-
 HOSTNAME=$(hostname)
-#HOSTNAME="raspibackup"
 
 errors=0
 sumErrors=0
@@ -112,13 +107,16 @@ createV612Backups() { # number of backups, keep backups
 
 	for mode in $MODES_TO_TEST; do
 		for backupType in $TYPES_TO_TEST; do
-			[[ $backupType =~ dd && $mode == "P" ]] && continue
-			createBackups $backupType $1 $mode $2
+			[[ $backupType =~ dd && $mode == "P" ]] && continue # dd not supported for -P
+			for bootMode in $BOOT_MODES; do
+				[[ $bootMode == "$BOOTMODE_TAR" &&  ( $backupType =~ dd || $mode == "P" ) ]] && continue # -B+ not supported for -P and dd
+				createBackups $backupType $1 $mode $2 $bootMode
+			done
 		done
 	done
 }
 
-function createBackups() { # type (dd, ddz, rsync, ...) count type (N,P) keep
+function createBackups() { # type (dd, ddz, rsync, ...) count type (N,P) keep ... other parms
 
 	local i rc parms
 
@@ -128,8 +126,8 @@ function createBackups() { # type (dd, ddz, rsync, ...) count type (N,P) keep
 	fi
 
 	for (( i=1; i<=$2; i++)); do
-		echo "--- Creating $1 backup number $i of mode $3 in ${BACKUP_PATH}_$3"
-		./raspiBackup.sh -t $1 $PARMS $m -k $4 "${BACKUP_PATH}_$3"
+		echo "--- Creating $1 backup number $i of mode $3 and option $5 in ${BACKUP_PATH}_$3"
+		./raspiBackup.sh -t $1 $PARMS $m -k $4 "$5" "${BACKUP_PATH}_$3"
 		rc=$?
 
 		local logFile=$(getLogName $1 $3)
@@ -248,7 +246,7 @@ function checkV612BootBackups() { # type (dd, ddz, rsync, ...) count mode (N,P)
 		local expectedFiles=4711
 
 		case $3 in
-			N)	bootCnt=$(ls -d "$backup/"* 2>/dev/null| egrep ".(img|mbr|sfdisk)$" | wc -l);
+			N)	bootCnt=$(ls -d "$backup/"* 2>/dev/null| egrep ".(tmg|img|mbr|sfdisk)$" | wc -l);
 				expectedFiles=3
 				;;
 			P)	bootCnt=$(ls -d "$backup/"* 2>/dev/null| egrep ".(blkid|mbr|sfdisk|parted)$" | wc -l);
@@ -263,18 +261,14 @@ function checkV612BootBackups() { # type (dd, ddz, rsync, ...) count mode (N,P)
 			(( buCnt++ ))
 		else
 			log "??? Missing $HOSTNAME-backup boot files for $backup - bootCnt: $bootCnt - expectedFiles: $expectedFiles"
-			IFS=""
-			log $(ls -d ${BACKUP_PATH}_$3/$HOSTNAME/$backup/* 2>/dev/null)
-			unset IFS
+			log "$(ls -d ${BACKUP_PATH}_$3/$HOSTNAME/$backup/* 2>/dev/null)"
 		fi
 	done
 
 	if [[ $buCnt != $2 ]]; then
 		(( errors++ ))
 		log "??? Missing $HOSTNAME-backup boot files: Expected boot backups: $2 - detected boot backups: $buCnt"
-		IFS=""
-		log $(ls -d ${BACKUP_PATH}_$3/$HOSTNAME/*)
-		unset IFS
+		log "$(ls -d ${BACKUP_PATH}_$3/$HOSTNAME/*)"
 	else
 		(( $DEBUG )) && log "--- Found $buCnt boot backups"
 	fi
@@ -330,9 +324,7 @@ function checkV611BootBackups() { # type (dd, ddz, rsync, ...) count mode (N,P)
 
 		if [[ $bootCnt != 3 ]];  then
 			log "??? Missing $HOSTNAME-backup boot files for $backup - bootCnt: $bootCnt - expectedFiles: 3"
-			IFS=""
-			log $(ls ${BACKUP_PATH}_$3/$HOSTNAME/$HOSTNAME-$1-backup-* 2>/dev/null)
-			unset IFS
+			log "$(ls ${BACKUP_PATH}_$3/$HOSTNAME/$HOSTNAME-$1-backup-* 2>/dev/null)"
 		else
 			(( buCnt++ ))
 		fi
@@ -341,9 +333,7 @@ function checkV611BootBackups() { # type (dd, ddz, rsync, ...) count mode (N,P)
 	if [[ $buCnt != $2 ]]; then
 		(( errors++ ))
 		log "??? Missing $HOSTNAME-backup boot files: Expected boot backups: $2 - detected boot backups: $buCnt"
-		IFS=""
-		log $(ls ${BACKUP_PATH}_$3/$HOSTNAME/*)
-		unset IFS
+		log "$(ls ${BACKUP_PATH}_$3/$HOSTNAME/*)"
 	else
 		(( $DEBUG )) && log "--- Found $buCnt boot backups"
 	fi
@@ -369,9 +359,7 @@ function checkV515BootBackups() { # type (dd, ddz, rsync, ...) count mode (N,P)
 	if [[ $buCnt != $expected ]]; then
 		(( errors++ ))
 		log "??? Missing $HOSTNAME-backup boot files: Expected boot backups: $expected - detected boot backups: $buCnt"
-		IFS=""
-		log $(ls ${BACKUP_PATH}_$3/$HOSTNAME/*)
-		unset IFS
+		log "$(ls ${BACKUP_PATH}_$3/$HOSTNAME/*)"
 	else
 		(( $DEBUG )) && log "--- Found $buCnt boot backups"
 	fi
@@ -392,9 +380,9 @@ function checkV612RootBackups() { # type (dd, ddz, rsync, ...) count mode (N,P)
 	local buCntToCheck=$2
 
 	case $3 in
-		N)	buCnt=$(ls "${BACKUP_PATH}_$3/$HOSTNAME/"*"-$1-backup"*/*".$extension" 2>/dev/null | wc -l)
+		N)	buCnt=$(ls ${BACKUP_PATH}_$3/$HOSTNAME/*-$1-backup*/*.$extension 2>/dev/null | wc -l)
 			;;
-		P)	buCnt=$(ls -d "${BACKUP_PATH}_$3/$HOSTNAME/"*"-$1-backup"*/*"mmcblk"* 2>/dev/null | wc -l)
+		P)	buCnt=$(ls -d ${BACKUP_PATH}_$3/$HOSTNAME/*-$1-backup*/*mmcblk* 2>/dev/null | wc -l)
 			(( buCntToCheck=buCntToCheck*$PARTITIONS_PER_BACKUP ))
 			;;
 		*)	log "error - $1 $2 $3"
@@ -406,10 +394,8 @@ function checkV612RootBackups() { # type (dd, ddz, rsync, ...) count mode (N,P)
 	if [[ $buCnt != $buCntToCheck ]]; then
 		(( errors++ ))
 		log "??? Missing raspibackup-$3-backup files for $extension: Backups found: $buCnt - expected: $buCntToCheck"
-		IFS=""
-		log $(ls "${BACKUP_PATH}_$3/$HOSTNAME/"*"-$1-backup"*/*".$extension")
-		log $(ls -d "${BACKUP_PATH}_$3/$HOSTNAME/"*"-$1-backup"*/*"mmcblk"*)
-		unset IFS
+		log "$(ls "${BACKUP_PATH}_$3/$HOSTNAME/"*"-$1-backup"*/*".$extension")"
+		log "$(ls -d "${BACKUP_PATH}_$3/$HOSTNAME/"*"-$1-backup"*/*"mmcblk"*)"
 	else
 		(( $DEBUG )) && log "--- Found $buCnt root backups"
 	fi
@@ -445,9 +431,7 @@ function checkV611RootBackups() { # type (dd, ddz, rsync, ...) count mode (N,P)
 	if [[ $buCnt != $buCntToCheck ]]; then
 		(( errors++ ))
 		log "??? Missing raspibackup-$3-backup files for $extension: Backups found: $buCnt - expected: $buCntToCheck"
-		IFS=""
-		log $(ls "${BACKUP_PATH}_$3/$HOSTNAME/"*"-$1-backup-"*)
-		unset IFS
+		log "$(ls "${BACKUP_PATH}_$3/$HOSTNAME/"*"-$1-backup-"*)"
 	else
 		(( $DEBUG )) && log "--- Found $buCnt root backups"
 	fi
@@ -478,9 +462,7 @@ function checkV515RootBackups() { # type (dd, ddz, rsync, ...) count mode (N,P)
 	if [[ $buCnt != $buCntToCheck ]]; then
 		(( errors++ ))
 		log "??? Missing raspibackup-$3-backup files for $extension: Backups found: $buCnt - expected: $buCntToCheck"
-		IFS=""
-		log $(ls -d "${BACKUP_PATH}_$3/$HOSTNAME/"*"-$1-backup"*)
-		unset IFS
+		log "$(ls -d "${BACKUP_PATH}_$3/$HOSTNAME/"*"-$1-backup"*)"
 	else
 		(( $DEBUG )) && log "--- Found $buCnt root backups"
 	fi

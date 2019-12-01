@@ -27,6 +27,11 @@ set -e
 
 NOTIFY_EMAIL="$(<email.conf)"
 
+if (( $UID != 0 )); then
+	echo "Call me as root"
+	exit 1
+fi
+
 startTime=$(date +%Y-%M-%d/%H:%m:%S)
 echo "Start: $startTime"
 echo "Start: $startTime" | mailx -s "--- Backup regression started" "$NOTIFY_EMAIL"
@@ -65,4 +70,23 @@ echo "End: $endTime" | mailx -s "--- Restore regression finished" "$NOTIFY_EMAIL
 
 echo ":-) Raspibackup regression test finished successfully"
 echo "" | mailx -s ":-) Raspibackup regression test finished sucessfully" $attach "$NOTIFY_EMAIL"
+
+startTime=$(date +%Y-%M-%d/%H:%m:%S)
+echo "Start: $startTime"
+echo "Start: $startTime" | mailx -s "--- 7412 regression started" "$NOTIFY_EMAIL"
+
+./raspiBackup7412Test.sh
+rc=$?
+
+endTime=$(date +%Y-%M-%d/%H:%m:%S)
+
+echo "Start: $startTime - End: $endTime"
+
+if [[ $rc != 0 ]]; then
+	echo "??? 7412 regression test failed"
+	echo "End: $endTime" | mailx -s "??? 7412 regression test failed" "$NOTIFY_EMAIL"
+	exit 127
+fi
+
+echo "End: $endTime" | mailx -s "--- 7412 regression finished" "$NOTIFY_EMAIL"
 
