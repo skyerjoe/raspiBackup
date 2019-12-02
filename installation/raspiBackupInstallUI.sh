@@ -27,7 +27,7 @@
 
 MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
-VERSION="0.4.2-dev" 	# -beta, -hotfix or -dev suffixes possible
+VERSION="0.4.2" 	# -beta, -hotfix or -dev suffixes possible
 
 if [[ (( ${BASH_VERSINFO[0]} < 4 )) || ( (( ${BASH_VERSINFO[0]} == 4 )) && (( ${BASH_VERSINFO[1]} < 3 )) ) ]]; then
 	echo "bash version 0.4.3 or beyond is required by $MYSELF" # nameref feature, declare -n var=$v
@@ -39,11 +39,11 @@ MYHOMEURL="https://$MYHOMEDOMAIN"
 
 MYDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-GIT_DATE="$Date: 2019-11-25 00:43:44 +0100$"
+GIT_DATE="$Date: 2019-12-02 22:04:51 +0100$"
 GIT_DATE_ONLY=${GIT_DATE/: /}
 GIT_DATE_ONLY=$(cut -f 2 -d ' ' <<<$GIT_DATE)
 GIT_TIME_ONLY=$(cut -f 3 -d ' ' <<<$GIT_DATE)
-GIT_COMMIT="$Sha1: 8b1f2e9$"
+GIT_COMMIT="$Sha1: 8f743a8$"
 GIT_COMMIT_ONLY=$(cut -f 2 -d ' ' <<<$GIT_COMMIT | sed 's/\$//')
 
 GIT_CODEVERSION="$MYSELF $VERSION, $GIT_DATE_ONLY/$GIT_TIME_ONLY - $GIT_COMMIT_ONLY"
@@ -96,15 +96,13 @@ INSTALLER_ABS_FILE="$INSTALLER_ABS_PATH/$MYSELF"
 
 PROPERTY_REGEX='.*="([^"]*)"'
 
-if [[ -z "${LANG}" ]]; then # no language defined
-	LANG="en_GB.UTF-8" # default language on Raspbian
-	export LANG="$LANG" # pass language to whiptail
-fi
-LANG_EXT="${LANG^^*}"	# need language ID in upper case
+[[ -z "${LANG}" ]] && LANG="en_US.UTF-8"
+LANG_EXT="${LANG,,*}"
 LANG_SYSTEM="${LANG_EXT:0:2}"
-if [[ $LANG_SYSTEM != "DE" && $LANG_SYSTEM != "EN" ]]; then
-	LANG_SYSTEM="EN"
+if [[ $LANG_SYSTEM != "de" && $LANG_SYSTEM != "en" ]]; then
+	LANG_SYSTEM="en"
 fi
+MESSAGE_LANGUAGE="${LANG_SYSTEM^^*}"
 
 # default configs
 CONFIG_LANGUAGE="${LANG_SYSTEM^^*}"
@@ -218,9 +216,6 @@ MSG_DE[$MSG_UPDATING_CRON]="${MSG_PRF}0026I: Cron Konfigurationsdatei %1 wird an
 MSG_MISSING_DIRECTORY=$((SCNT++))
 MSG_EN[$MSG_MISSING_DIRECTORY]="${MSG_PRF}0027E: Missing required directory %1."
 MSG_DE[$MSG_MISSING_DIRECTORY]="${MSG_PRF}0027E: Erforderliches Verzeichnis %1 existiert nicht."
-MSG_UNEXPECTED_CRON_LINE=$((SCNT++))
-MSG_EN[$MSG_UNEXPECTED_CRON_LINE]="${MSG_PRF}0028E: Unexpected crontab line %1."
-MSG_DE[$MSG_UNEXPECTED_CRON_LINE]="${MSG_PRF}0028E: Unerwartete Crontabzeile %1."
 MSG_TITLE=$((SCNT++))
 MSG_EN[$MSG_TITLE]="$RASPIBACKUP_NAME Installation and Configuration Tool V${VERSION}"
 MSG_DE[$MSG_TITLE]="$RASPIBACKUP_NAME Installations- und Konfigurations Tool V${VERSION}"
@@ -242,13 +237,6 @@ MSG_DE[$BUTTON_CANCEL]="Abbruch"
 BUTTON_OK=$((SCNT++))
 MSG_EN[$BUTTON_OK]="Ok"
 MSG_DE[$BUTTON_OK]="Bestätigen"
-MSG_QUESTION_SERVICES_OK=$((SCNT++))
-MSG_EN[$MSG_QUESTION_SERVICES_OK]="Following services will be stopped and started by $RASPIBACKUP_NAME.${NL}${NL}\
-%1${NL}${NL}\
-Is this list of services OK?"
-MSG_DE[$MSG_QUESTION_SERVICES_OK]="Folgende Services werden von $RASPIBACKUP_NAME gestoppt und gestartet.${NL}${NL}\
-%1${NL}${NL}\
-Ist die Liste der Services OK?"
 MSG_QUESTION_UPDATE_CONFIG=$((SCNT++))
 MSG_EN[$MSG_QUESTION_UPDATE_CONFIG]="Do you want to save the updated $RASPIBACKUP_NAME configuration now?"
 MSG_DE[$MSG_QUESTION_UPDATE_CONFIG]="Soll die geänderte Konfiguration von $RASPIBACKUP_NAME jetzt gespeichert werden?"
@@ -309,22 +297,6 @@ MSG_DE[$MSG_INVALID_TIME]="Ungültige Zeit '%1'. Die Eingabe muss im Format hh:m
 MSG_RUNASROOT=$((SCNT++))
 MSG_EN[$MSG_RUNASROOT]="$MYSELF has to be started as root. Try 'sudo %1%2'."
 MSG_DE[$MSG_RUNASROOT]="$MYSELF muss als root gestartet werden. Benutze 'sudo %1%2'."
-MSG_INVALID_STOPSERVICES=$((SCNT++))
-MSG_EN[$MSG_INVALID_STOPSERVICES]="Invalid sequence of service names of services to stop detected. Only valid service names separated by spaces are allowed.${NL}\
-Example input: 'pilight nfs-kernel-server samba' \
-will execute 'systemctl stop pilight && systemctl stop nfs-kernel-server && systemctl stop samba' to stop the services \
-and execute 'systemctl systemctl start samba && systemctl nfs-kernel-start server && systemctl start pilight' to start the services"
-MSG_DE[$MSG_INVALID_STOPSERVICES]="Ungültige Folge von Namen von zu stoppenden Services gefunden. Es sind nur durch Leerzeichen getrennte Servicenamen von existierenden Services erlaubt.${NL}\
-Beispieleingabe: 'pilight nfs-kernel-server samba' \
-führt 'systemctl stop pilight && systemctl stop nfs-kernel-server && systemctl stop samba' aus um die Services zu stoppen \
-und führt 'systemctl systemctl start samba && systemctl start nfs-kernel-server && systemctl start pilight' aus um die Services zu starten"
-
-MSG_NO_STOPSERVICES=$((SCNT++))
-MSG_EN[$MSG_NO_STOPSERVICES]="No sequence of services to stop entered.${NL} WARNING: This may cause inconsistent backups.${NL}${NL}If you are really sure you don't have to stop any services enter $IGNORE_START_STOP_CHAR instead."
-MSG_DE[$MSG_NO_STOPSERVICES]="Keine Folge von zu stoppenden Services eingegeben.${NL} WARNUNG: Dadurch können inkonsistente Backups entstehen.${NL}${NL}Falls man sich sicher ist keine Services stoppen zu müssen kann stattdessen $IGNORE_START_STOP_CHAR eingegeben werden."
-MSG_SERVICES_DONT_EXIST=$((SCNT++))
-MSG_EN[$MSG_SERVICES_DONT_EXIST]="%1 are invalid services."
-MSG_DE[$MSG_SERVICES_DONT_EXIST]="%1 sind ungültige Services."
 
 DESCRIPTION_INSTALLATION=$((SCNT++))
 MSG_EN[$DESCRIPTION_INSTALLATION]="${NL}$RASPIBACKUP_NAME allows to plug in custom extensions which are called before and after the backup process. \
@@ -357,13 +329,6 @@ MSG_EN[$DESCRIPTION_STARTSTOP]="${NL}Before and after creating a backup importan
 The services will be started in reverse order when backup finished. For further details see https://www.linux-tips-and-tricks.de/en/faq#a18."
 MSG_DE[$DESCRIPTION_STARTSTOP]="${NL}Vor und nach einem Backup sollten immer alle wichtigen Services gestoppt und gestartet werden. Dazu müssen die notwendigen Services die gestoppt werden sollen getrennt durch Leerzeichen in der richtigen Reihenfolge eingegeben werden. \
 In umgekehrter Reihenfolge werden die Services nach dem Backup wieder gestartet. Weitere Details finden sich auf https://www.linux-tips-and-tricks.de/de/faq#a18."
-DESCRIPTION_EDIT_SEQUENCE=$((SCNT++))
-MSG_EN[$DESCRIPTION_EDIT_SEQUENCE]="${NL}Review following sequence of commands to stop and start important services before and after the backup. \
-They will be started again when backup finished in reverse sequence. Make sure the sequence is correct and update the sequence in /usr/local/etc/raspiBackup.conf if needed. \
-For further details see https://www.linux-tips-and-tricks.de/en/faq#a18."
-MSG_DE[$DESCRIPTION_EDIT_SEQUENCE]="${NL}Überprüfe die folgende Reihenfolge der Befehle die wichtige Services vor und nach dem Backup stoppt und started. \
-Sie werden in umgekehrter Reihenfolge wieder gestartet wenn der Backup beendet ist. Die Reihenfolge muss korrekt sein und muss u.U. in /usr/local/etc/raspiBackup.conf geändert werden. \
-Weitere Details finden sich auf https://www.linux-tips-and-tricks.de/de/faq#a18."
 DESCRIPTION_STARTSTOP_SEQUENCE=$((SCNT++))
 MSG_EN[$DESCRIPTION_STARTSTOP_SEQUENCE]="${NL}Select step by step every service which should be stopped first, second, third and so on and confirm every single service with <Ok> until there is no service any more. \
 Actual sequence is displayed top down. \
@@ -441,9 +406,6 @@ MSG_DE[$TITLE_VALIDATIONERROR]="Ungültige Eingabe"
 TITLE_CONFIRM=$((SCNT++))
 MSG_EN[$TITLE_CONFIRM]="Please confirm"
 MSG_DE[$TITLE_CONFIRM]="Bitte bestätigen"
-TITLE_CURRENT_STOP=$((SCNT++))
-MSG_EN[$TITLE_CURRENT_STOP]="Services to stop:"
-MSG_DE[$TITLE_CURRENT_STOP]="Zu stoppende Services:"
 MSG_INVALID_BACKUPPATH=$((SCNT++))
 MSG_EN[$MSG_INVALID_BACKUPPATH]="Backup path %1 does not exist"
 MSG_DE[$MSG_INVALID_BACKUPPATH]="Sicherungsverzeichnis %1 existiert nicht"
@@ -1230,29 +1192,6 @@ function getStartStopCommands() { # listOfServicesToStop pcommandvarname scomman
 	logExit
 }
 
-function parseCronConfig() {
-	logEntry
-	local l="$(tail -n 1 < $CRON_ABS_FILE)"
-	logItem "last line: $l"
-	local v=$(awk ' {print $1, $2, $5}' <<< "$l")
-	logItem "parsed $v"
-	CONFIG_CRON_MINUTE="$(cut -f 1 -d ' ' <<< $v)"
-	[[ ${CONFIG_CRON_MINUTE:0:1} == "#" ]] && CONFIG_CRON_MINUTE="${CONFIG_CRON_MINUTE:1}"
-	CONFIG_CRON_HOUR="$(cut -f 2 -d ' ' <<< $v)"
-	CONFIG_CRON_DAY=$(cut -f 3 -d ' ' <<< $v)
-
-	if [[ ! $CONFIG_CRON_MINUTE =~ [0-9]+ || ! $CONFIG_CRON_HOUR =~ [0-9]+ ]] || [[ ( ! $CONFIG_CRON_DAY =~ [0-6]+ && ! $CONFIG_CRON_DAY == "*" ) ]]; then
-		unrecoverableError $MSG_UNEXPECTED_CRON_LINE "$l"
-		return
-	fi
-
-	[[ "$CONFIG_CRON_DAY" == "*" ]] && CONFIG_CRON_DAY=0 || (( CONFIG_CRON_DAY ++ )) # 0 = Daily, 1 = Sun, 2 = Mon, ...
-	logItem "parsed hour: $CONFIG_CRON_HOUR"
-	logItem "parsed minute: $CONFIG_CRON_MINUTE"
-	logItem "parsed day: $CONFIG_CRON_DAY"
-	logEntry
-}
-
 function parseConfig() {
 	logEntry
 	IFS="" matches=$(grep -E "MSG_LEVEL|KEEPBACKUPS|BACKUPPATH|BACKUPTYPE|ZIP_BACKUP|PARTITIONBASED_BACKUP|LANGUAGE|STARTSERVICES|STOPSERVICES|EMAIL|MAIL_PROGRAM" "$CONFIG_ABS_FILE")
@@ -1650,7 +1589,18 @@ function config_menu() {
 	fi
 
 	if isCrontabInstalled; then
-		parseCronConfig
+		local l="$(tail -n 1 < $CRON_ABS_FILE)"
+		logItem "last line: $l"
+		local v=$(awk ' {print $1, $2, $5}' <<< "$l")
+		logItem "parsed $v"
+		CONFIG_CRON_MINUTE="$(cut -f 1 -d ' ' <<< $v)"
+		[[ ${CONFIG_CRON_MINUTE:0:1} == "#" ]] && CONFIG_CRON_MINUTE="${CONFIG_CRON_MINUTE:1}"
+		CONFIG_CRON_HOUR="$(cut -f 2 -d ' ' <<< $v)"
+		CONFIG_CRON_DAY=$(cut -f 3 -d ' ' <<< $v)
+		[[ "$CONFIG_CRON_DAY" == "*" ]] && CONFIG_CRON_DAY=0 || (( CONFIG_CRON_DAY ++ )) # 0 = Daily, 1 = Sun, 2 = Mon, ...
+		logItem "parsed hour: $CONFIG_CRON_HOUR"
+		logItem "parsed minute: $CONFIG_CRON_MINUTE"
+		logItem "parsed day: $CONFIG_CRON_DAY"
 	fi
 
 	while :; do

@@ -60,11 +60,11 @@ IS_HOTFIX=$((! $? ))
 MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
 
-GIT_DATE="$Date: 2019-11-26 22:03:26 +0100$"
+GIT_DATE="$Date: 2019-12-02 22:04:51 +0100$"
 GIT_DATE_ONLY=${GIT_DATE/: /}
 GIT_DATE_ONLY=$(cut -f 2 -d ' ' <<< $GIT_DATE)
 GIT_TIME_ONLY=$(cut -f 3 -d ' ' <<< $GIT_DATE)
-GIT_COMMIT="$Sha1: 5263054$"
+GIT_COMMIT="$Sha1: 8f743a8$"
 GIT_COMMIT_ONLY=$(cut -f 2 -d ' ' <<< $GIT_COMMIT | sed 's/\$//')
 
 GIT_CODEVERSION="$MYSELF $VERSION, $GIT_DATE_ONLY/$GIT_TIME_ONLY - $GIT_COMMIT_ONLY"
@@ -210,6 +210,7 @@ PARTITIONS_TO_BACKUP_ALL="*"
 NEWS_AVAILABLE=0
 BETA_AVAILABLE=0
 LOG_INDENT=0
+WARNING_MESSAGE_WRITTEN=0
 
 PROPERTY_REGEX='.*="([^"]*)"'
 NOOP_AO_ARG_REGEX="^[[:space:]]*:"
@@ -434,9 +435,9 @@ MSG_DE[$MSG_SAVED_MSG]="RBK0049I: Meldungen wurden in %s gesichert."
 MSG_RESTORING_FILE=50
 MSG_EN[$MSG_RESTORING_FILE]="RBK0050I: Restoring backup from %s."
 MSG_DE[$MSG_RESTORING_FILE]="RBK0050I: Backup wird von %s zurückgespielt."
-MSG_RESTORING_MBR=51
-MSG_EN[$MSG_RESTORING_MBR]="RBK0051I: Restoring mbr from %s to %s."
-MSG_DE[$MSG_RESTORING_MBR]="RBK0051I: Master boot backup wird von %s auf %s zurückgespielt."
+#MSG_RESTORING_MBR=51
+#MSG_EN[$MSG_RESTORING_MBR]="RBK0051I: Restoring mbr from %s to %s."
+#MSG_DE[$MSG_RESTORING_MBR]="RBK0051I: Master boot backup wird von %s auf %s zurückgespielt."
 MSG_CREATING_PARTITIONS=52
 MSG_EN[$MSG_CREATING_PARTITIONS]="RBK0052I: Creating partition(s) on %s."
 MSG_DE[$MSG_CREATING_PARTITIONS]="RBK0052I: Partition(en) werden auf %s erstellt."
@@ -1146,7 +1147,7 @@ function writeToConsole() {  # msglevel messagenumber message
 		fi
 
 		if (( $INTERACTIVE )); then
-			if [[ $msgSev == "E" ]]; then
+			if [[ $msgSev == "E" || $msgSev == "W" ]]; then
 				echo $noNL -e "$timestamp$msg" >&2
 			else
 				echo $noNL -e "$timestamp$msg" >&1
@@ -2920,7 +2921,11 @@ function cleanupBackup() { # trap
 	else
 
 		if (( ! $MAIL_ON_ERROR_ONLY )); then
-			writeToConsole $MSG_LEVEL_MINIMAL $MSG_BACKUP_OK
+			if (( WARNING_MESSAGE_WRITTEN )); then
+				writeToConsole $MSG_LEVEL_MINIMAL $MSG_BACKUP_WARNING
+			else
+				writeToConsole $MSG_LEVEL_MINIMAL $MSG_BACKUP_OK
+			fi
 		fi
 
 		msg=$(getLocalizedMessage $MSG_TITLE_OK $HOSTNAME)
