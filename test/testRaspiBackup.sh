@@ -24,8 +24,6 @@
 
 DEBUG=1
 
-BACKUP_PATH="/mnt/$BACKUP_PATH"
-
 BACKUPTYPE_DD="dd"
 BACKUPTYPE_DDZ="ddz"
 BACKUPTYPE_TAR="tar"
@@ -53,14 +51,11 @@ NUMBER_OF_BACKUPS=1
 
 MOUNT_POINT=${1:-"obelix:/disks/bigdata/"}
 BACKUP_PATH=${2:-"raspibackupTest"}
-ENVIRONMENT=${3:-"SD USB SDONLY"}
+BACKUP_PATH="/mnt/$BACKUP_PATH"
+ENVIRONMENT=${3:-"SD USB SDBOOTONLY"}
 TYPES_TO_TEST=${4:-"dd ddz tar tgz rsync"}
 MODES_TO_TEST=${5:-"N P"}
 BOOT_MODES=${6:-"$BOOTMODE_DD $BOOTMODE_TAR"}
-
-USE_V5=0
-USE_V6=0
-USE_V6N=0
 
 declare -A processedFiles
 
@@ -276,96 +271,6 @@ function checkV612BootBackups() { # type (dd, ddz, rsync, ...) count mode (N,P)
 	return $errors
 }
 
-function checkV611BootBackups() { # type (dd, ddz, rsync, ...) count mode (N,P)
-
-	log "--- checkV611BootBackups $1 $2 $3 ---"
-
-	if [[ $3 == "P" ]]; then
-		checkV612BootBackups $1 $2 $3
-		return $?
-	fi
-
-	if [[ $1 == "dd" || $1 == "ddz" ]]; then
-		return	0
-	fi
-
-	if [[ $3 == "P" ]]; then
-		echo "P not possible"
-		exit 127
-	fi
-
-	local extension=${FILE_EXTENSION[$1]}
-	local regex="$1\-backup\-([0-9]{8}\-[0-9]{6})"
-
-	local buCnt=0
-	local backup
-
-	if [[ $1 != "rsync" ]]; then
-		lsString="${BACKUP_PATH}_$3/$HOSTNAME/$HOSTNAME-$1-backup-*.$extension"
-	else
-		lsString="-d ${BACKUP_PATH}_$3/$HOSTNAME/$HOSTNAME-$1-backup-*"
-	fi
-
-	(( $DEBUG )) && log "lsString: $lsString"
-
-	for backup in $(ls $lsString 2>/dev/null | grep -v ".log"); do
-
-		if [[ ! $backup =~ $regex ]]; then
-			(( $DEBUG )) && log "Skipping $backup"
-			continue
-		fi
-
-		(( $DEBUG )) && log "Processing -> $backup"
-
-		local date=${BASH_REMATCH[1]}
-		local bootCnt=4711
-
-		bootCnt=$(ls ${BACKUP_PATH}_$3/$HOSTNAME/$HOSTNAME-backup-$date.{img,mbr,sfdisk} 2>/dev/null | wc -l);
-
-		if [[ $bootCnt != 3 ]];  then
-			log "??? Missing $HOSTNAME-backup boot files for $backup - bootCnt: $bootCnt - expectedFiles: 3"
-			log "$(ls ${BACKUP_PATH}_$3/$HOSTNAME/$HOSTNAME-$1-backup-* 2>/dev/null)"
-		else
-			(( buCnt++ ))
-		fi
-	done
-
-	if [[ $buCnt != $2 ]]; then
-		(( errors++ ))
-		log "??? Missing $HOSTNAME-backup boot files: Expected boot backups: $2 - detected boot backups: $buCnt"
-		log "$(ls ${BACKUP_PATH}_$3/$HOSTNAME/*)"
-	else
-		(( $DEBUG )) && log "--- Found $buCnt boot backups"
-	fi
-	return $errors
-}
-
-function checkV515BootBackups() { # type (dd, ddz, rsync, ...) count mode (N,P)
-
-	log "--- checkV515BootBackups $1 $2 $3 ---"
-
-	if [[ $1 == "dd" || $1 == "ddz" ]]; then
-		return	0
-	fi
-
-
-	local buCnt=0
-	local backup
-
-	buCnt=$(ls ${BACKUP_PATH}_$3/$HOSTNAME/$HOSTNAME-backup.{img,mbr,sfdisk} 2>/dev/null | wc -l)
-
-	expected=3
-
-	if [[ $buCnt != $expected ]]; then
-		(( errors++ ))
-		log "??? Missing $HOSTNAME-backup boot files: Expected boot backups: $expected - detected boot backups: $buCnt"
-		log "$(ls ${BACKUP_PATH}_$3/$HOSTNAME/*)"
-	else
-		(( $DEBUG )) && log "--- Found $buCnt boot backups"
-	fi
-	return $errors
-}
-
 function checkV612RootBackups() { # type (dd, ddz, rsync, ...) count mode (N,P)
 
 	log "--- checkV612RootBackups $1 $2 $3 ---"
@@ -403,73 +308,6 @@ function checkV612RootBackups() { # type (dd, ddz, rsync, ...) count mode (N,P)
 	return $errors
 }
 
-function checkV611RootBackups() { # type (dd, ddz, rsync, ...) count mode (N,P)
-
-	log "--- checkV611RootBackups $1 $2 $3 ---"
-
-	if [[ $3 == "P" ]]; then
-		checkV612RootBackups $1 $2 $3
-		return $?
-	fi
-
-	(( $DEBUG )) && log "Checking for files of backup $1 and count $2 and type $3"
-	local buCnt=0
-	local extension
-
-	# check for backup files and img file for rsync
-
-	local extension=${FILE_EXTENSION[$1]}
-	local buCntToCheck=$2
-
-	if [[ $1 == "rsync" ]]; then
-		buCnt=$(ls -d "${BACKUP_PATH}_$3/$HOSTNAME/"*"-$1-backup-"* 2>/dev/null | grep -v ".log$" | wc -l)
-	else
-		buCnt=$(ls "${BACKUP_PATH}_$3/$HOSTNAME/"*"-$1-backup-"*".$extension" 2>/dev/null | wc -l)
-	fi
-
-	(( $DEBUG )) && log "Checking for $buCntToCheck root backup files"
-	if [[ $buCnt != $buCntToCheck ]]; then
-		(( errors++ ))
-		log "??? Missing raspibackup-$3-backup files for $extension: Backups found: $buCnt - expected: $buCntToCheck"
-		log "$(ls "${BACKUP_PATH}_$3/$HOSTNAME/"*"-$1-backup-"*)"
-	else
-		(( $DEBUG )) && log "--- Found $buCnt root backups"
-	fi
-
-	return $errors
-}
-
-function checkV515RootBackups() { # type (dd, ddz, rsync, ...) count mode (N,P)
-
-	log "--- checkV515RootBackups $1 $2 $3 ---"
-
-	local extension=${FILE_EXTENSION[$1]}
-
-	(( $DEBUG )) && log "Checking for files of backup $1 and count $2 and type $3 and ext $extension"
-	local buCnt=0
-	local extension
-
-	# check for backup files and img file for rsync
-
-	local buCntToCheck=$2
-
-	if [[ $1 == "rsync" ]]; then
-		buCnt=$(ls -d "${BACKUP_PATH}_$3/$HOSTNAME/"*"-$1-backup-"* 2>/dev/null | grep -v ".log" | wc -l)
-	else
-		buCnt=$(ls "${BACKUP_PATH}_$3/$HOSTNAME/"*"-$1-backup-"*".$extension" 2>/dev/null | wc -l)
-	fi
-
-	if [[ $buCnt != $buCntToCheck ]]; then
-		(( errors++ ))
-		log "??? Missing raspibackup-$3-backup files for $extension: Backups found: $buCnt - expected: $buCntToCheck"
-		log "$(ls -d "${BACKUP_PATH}_$3/$HOSTNAME/"*"-$1-backup"*)"
-	else
-		(( $DEBUG )) && log "--- Found $buCnt root backups"
-	fi
-
-	return $errors
-}
-
 function checkV612Backups() { # type (dd, ddz, rsync, ...) count mode (N,P)
 
 	local e
@@ -478,32 +316,6 @@ function checkV612Backups() { # type (dd, ddz, rsync, ...) count mode (N,P)
 	e=$?
 	(( sumErrors += e ))
 	checkV612RootBackups $1 $2 $3
-	e=$?
-	(( sumErrors += e ))
-}
-
-function checkV611Backups() { # type (dd, ddz, rsync, ...) count mode (N,P)
-
-	local e
-	log "--- checkV611Backups $1 $2 $3 ---"
-
-	checkV611BootBackups $1 $2 $3
-	e=$?
-	(( sumErrors += e ))
-	checkV611RootBackups $1 $2 $3
-	e=$?
-	(( sumErrors += e ))
-
-}
-
-function checkV515Backups() { # type (dd, ddz, rsync, ...) count mode (N,P)
-
-	local e
-	log "--- checkV515Backups $1 $2 $3 ---"
-	checkV515BootBackups $1 $2 $3
-	e=$?
-	(( sumErrors += e ))
-	checkV515RootBackups $1 $2 $3
 	e=$?
 	(( sumErrors += e ))
 }
@@ -520,31 +332,6 @@ function checkAllV612Backups() {  # number of backups
 		done
 	done
 
-	[[ $errors > 0 ]] && log "??? Errors: $errors" || log "--- Success"
-	(( sumErrors+=errors ))
-}
-
-function checkAllV611Backups() {  # backups
-
-	log "--- checkV611AllBackups ---"
-	errors=0
-	checkV611Backups dd $1 N
-	checkV611Backups tar $1 N
-	checkV611Backups rsync $1 N
-
-	checkV611Backups tar $1 P
-	checkV611Backups rsync $1 P
-	[[ $errors > 0 ]] && log "??? Errors: $errors" || log "--- Success"
-	(( sumErrors+=errors ))
-}
-
-function checkAllV515Backups() {  # backups
-
-	errors=0
-	log "--- checkV515AllBackups ---"
-	checkV515Backups dd $1 N
-	checkV515Backups tar $1 N
-	checkV515Backups rsync $1 N
 	[[ $errors > 0 ]] && log "??? Errors: $errors" || log "--- Success"
 	(( sumErrors+=errors ))
 }
@@ -698,48 +485,9 @@ rm "$LOG_FILE"
 
 mkdir -p ${BACKUP_PATH} 2>/dev/null
 
-USE_V5=0
-USE_V6=0
-USE_V6N=0
-
-log $SEPARATOR
-
-(( $USE_V5 )) && checkAllV515Backups 2
-(( $USE_V6 )) && checkAllV611Backups 2
-(( $USE_V6N )) && checkAllV612Backups 2
-
-#countBackups "dd" N 51
-#countBackups "dd" N 61
-#countBackups "dd" P 62
-
-#echo "--- Processedfiles ---"
-#for i in "${!processedFiles[@]}"; do
-#	echo "key  : $i - value: ${processedFiles[$i]}"
-#done
-
-USE_V6N=1
 cleanup
-#primeBackups
-#checkAllV612Backups 1
 createV612Backups 1 1	# createNum, keepNum
 checkAllV612Backups 1
-USE_V6N=0
-
-#USE_V6=1
-#cleanup
-#primeBackups
-#checkAllV611Backups 1
-#createV612Backups 1 1	# createNum, keepNum
-#checkAllV612Backups 1
-#USE_V6=0
-
-#USE_V5=1
-#cleanup
-#primeBackups
-#checkAllV515Backups 1
-#createV612Backups 1 1	# createNum, keepNum
-#checkAllV612Backups 1
-#USE_V5=0
 
 if [[ $sumErrors > 0 ]]; then
 	log "??? raspiBackup test Failed: Errors detected: $sumErrors"

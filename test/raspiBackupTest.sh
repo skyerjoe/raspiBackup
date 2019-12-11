@@ -33,7 +33,6 @@ fi
 
 LOG_FILE="$CURRENT_DIR/${MYNAME}.log"
 rm -f "$LOG_FILE" 2>&1 1>/dev/null
-
 exec 1> >(tee -a "$LOG_FILE" >&1)
 exec 2> >(tee -a "$LOG_FILE" >&2)
 
@@ -61,8 +60,8 @@ echo "Creating target backup directies"
 mkdir -p $BACKUP_ROOT_DIR/${BACKUP_DIR}_N
 mkdir -p $BACKUP_ROOT_DIR/${BACKUP_DIR}_P
 
-TESTENVIRONMENTS="SD USB SDONLY"
-TESTENVIRONMENTS="SD"
+TESTENVIRONMENTS="SD USB SDBOOTONLY"
+TESTENVIRONMENTS="SDBOOTONLY"
 
 for environment in $TESTENVIRONMENTS; do
 
@@ -70,70 +69,73 @@ for environment in $TESTENVIRONMENTS; do
 
 	if ! ping -c 1 $VM_IP; then
 
-	echo "Creating snapshot"
+		echo "Creating snapshot"
 
-	case $environment in
-		SD) qemu-img create -f qcow2 -b $IMAGES/raspianRaspiBackup-${RASPBIAN_OS}.qcow $IMAGES/raspianRaspiBackup-snap-${RASPBIAN_OS}.qcow
-			echo "Starting VM in raspianRaspiBackup-snap-${RASPBIAN_OS}.qcow"
-			$VMs/start.sh raspianRaspiBackup-snap-${RASPBIAN_OS}.qcow &
-			;;
-		USB) qemu-img create -f qcow2 -b $IMAGES/raspianRaspiBackup-Nommcblk-${RASPBIAN_OS}.qcow $IMAGES/raspianRaspiBackup-snap-${RASPBIAN_OS}.qcow
-			echo "Starting VM in raspianRaspiBackup-snap-${RASPBIAN_OS}.qcow"
-			$VMs/start.sh raspianRaspiBackup-snap-${RASPBIAN_OS}.qcow &
-			;;
-		SDONLY) qemu-img create -f qcow2 -b $IMAGES/raspianRaspiBackup-BootSDOnly-${RASPBIAN_OS}.qcow $IMAGES/raspianRaspiBackup-snap-${RASPBIAN_OS}.qcow
-			qemu-img create -f qcow2 -b $IMAGES/raspianRaspiBackup-RootSDOnly-${RASPBIAN_OS}.qcow $IMAGES/raspianRaspiBackup-RootSDOnly-snap-${RASPBIAN_OS}.qcow
-			echo "Starting VM in raspianRaspiBackup-snap-${RASPBIAN_OS}.qcow"
-			$VMs/startStretchBootSDOnly.sh raspianRaspiBackup-snap-${RASPBIAN_OS}.qcow raspianRaspiBackup-RootSDOnly-snap-${RASPBIAN_OS}.qcow &
-			types="dd"
-			modes="N"
-			bootModes="-B-"
-			;;
-		*) echo "invalid environment $environment"
-			ext 42
-	esac
+		case $environment in
+			# SD card only
+			SD) qemu-img create -f qcow2 -b $IMAGES/raspianRaspiBackup-${RASPBIAN_OS}.qcow $IMAGES/raspianRaspiBackup-snap-${RASPBIAN_OS}.qcow
+				echo "Starting VM in raspianRaspiBackup-snap-${RASPBIAN_OS}.qcow"
+				$VMs/start.sh raspianRaspiBackup-snap-${RASPBIAN_OS}.qcow &
+				;;
+			# no SD card, USB boot
+			USB) qemu-img create -f qcow2 -b $IMAGES/raspianRaspiBackup-Nommcblk-${RASPBIAN_OS}.qcow $IMAGES/raspianRaspiBackup-snap-${RASPBIAN_OS}.qcow
+				echo "Starting VM in raspianRaspiBackup-snap-${RASPBIAN_OS}.qcow"
+				$VMs/start.sh raspianRaspiBackup-snap-${RASPBIAN_OS}.qcow &
+				;;
+			# boot on SD card but use external root filesystem
+			SDBOOTONLY) qemu-img create -f qcow2 -b $IMAGES/raspianRaspiBackup-BootSDOnly-${RASPBIAN_OS}.qcow $IMAGES/raspianRaspiBackup-snap-${RASPBIAN_OS}.qcow
+				qemu-img create -f qcow2 -b $IMAGES/raspianRaspiBackup-RootSDOnly-${RASPBIAN_OS}.qcow $IMAGES/raspianRaspiBackup-RootSDOnly-snap-${RASPBIAN_OS}.qcow
+				echo "Starting VM in raspianRaspiBackup-snap-${RASPBIAN_OS}.qcow"
+				$VMs/startStretchBootSDOnly.sh raspianRaspiBackup-snap-${RASPBIAN_OS}.qcow raspianRaspiBackup-RootSDOnly-snap-${RASPBIAN_OS}.qcow &
+				types="dd"
+				modes="N"
+				bootModes="-B-"
+				;;
+			*) echo "invalid environment $environment"
+				ext 42
+		esac
 
-	echo "Waiting for VM with IP $VM_IP to come up"
-	while ! ping -c 1 $VM_IP &>/dev/null; do
-		sleep 3
-	done
+		echo "Waiting for VM with IP $VM_IP to come up"
+		while ! ping -c 1 $VM_IP &>/dev/null; do
+			sleep 3
+		done
 	fi
 
 	SCRIPTS="raspiBackup.sh $TEST_SCRIPT .raspiBackup.conf"
-	#SCRIPTS="raspiBackup.sh $TEST_SCRIPT"
 
 	for file in $SCRIPTS; do
-	echo "Uploading $file"
-	while ! scp $file root@$VM_IP:/root &>/dev/null; do
-		sleep 3
+		echo "Uploading $file"
+		while ! scp $file root@$VM_IP:/root &>/dev/null; do
+			sleep 3
+		done
 	done
-	done
+done
 
-	if (( $BOOT_ONLY )); then
+if (( $BOOT_ONLY )); then
 	echo "Finished"
 	exit 0
-	fi
+fi
 
-	function sshexec() { # cmd
+function sshexec() { # cmd
 	echo "Executing $@"
 	ssh root@$VM_IP "$@"
-	}
+}
 
-	sshexec "chmod +x ~/$TEST_SCRIPT"
+sshexec "chmod +x ~/$TEST_SCRIPT"
 
-	sshexec "time ~/$TEST_SCRIPT $BACKUP_MOUNT_POINT \"$BACKUP_DIR\" \"$environment\" \"$types\" \"$modes\" \"$bootmodes\""
+sshexec "time ~/$TEST_SCRIPT $BACKUP_MOUNT_POINT \"$BACKUP_DIR\" \"$environment\" \"$types\" \"$modes\" \"$bootmodes\""
 
-	echo "Downloading testrun log"
-	while ! scp root@$VM_IP:/root/testRaspiBackup.log . 1>/dev/null; do
-	sleep 3
-	done
+echo "Downloading testrun log"
+scp root@$VM_IP:/root/testRaspiBackup.log . 1>/dev/null
 
-	if (( ! $KEEP_VM )); then
+echo "Downloading raspiBackup.log log"
+scp root@$VM_IP:/root/raspiBackup.log . 1>/dev/null
+
+if (( ! $KEEP_VM )); then
 	echo "Shuting down"
 	sshexec "shutdown -h now"
 	sudo pkill qemu
-	fi
-done
+fi
 
 grep "Backup test finished successfully" testRaspiBackup.log
 

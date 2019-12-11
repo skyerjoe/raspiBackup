@@ -108,7 +108,7 @@ for backup in $BACKUPS_TO_RESTORE; do
 
 	echo "Processing backup $backup ..."
 
-	IMAGES_TO_RESTORE=( $(ls -d "$backup/raspberrypi-"*"-backup-"* | grep -v ".log$") )
+	IMAGES_TO_RESTORE=( $(ls -d "$backup"*"/raspberrypi-"*"-backup-"* | grep -v ".log$") )
 #	IMAGES_TO_RESTORE=( $(ls -d "$backup/raspibackup-"*"-backup-"* | grep -v ".log$") )
 #	IMAGES_TO_RESTORE=( $(ls -d "$backup/raspibackup-tar-backup-"* "$backup/raspibackup-rsync-backup-"* | grep -v ".log$") )
 #	IMAGES_TO_RESTORE=( $(ls -d "$backup/raspberrypi-dd-backup-"* | grep -v ".log$") )
