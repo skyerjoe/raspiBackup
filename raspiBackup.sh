@@ -60,11 +60,11 @@ IS_HOTFIX=$((! $? ))
 MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
 
-GIT_DATE="$Date: 2019-12-02 22:04:51 +0100$"
+GIT_DATE="$Date: 2019-11-27 20:41:46 +0100$"
 GIT_DATE_ONLY=${GIT_DATE/: /}
 GIT_DATE_ONLY=$(cut -f 2 -d ' ' <<< $GIT_DATE)
 GIT_TIME_ONLY=$(cut -f 3 -d ' ' <<< $GIT_DATE)
-GIT_COMMIT="$Sha1: 8f743a8$"
+GIT_COMMIT="$Sha1: c767b78$"
 GIT_COMMIT_ONLY=$(cut -f 2 -d ' ' <<< $GIT_COMMIT | sed 's/\$//')
 
 GIT_CODEVERSION="$MYSELF $VERSION, $GIT_DATE_ONLY/$GIT_TIME_ONLY - $GIT_COMMIT_ONLY"
@@ -963,6 +963,9 @@ MSG_DE[$MSG_SMART_RECYCLE_FILE_DELETE]="RBK0220I: Smart Backup Strategie löscht
 MSG_SMART_RECYCLE_FILE_WOULD_BE_KEPT=222
 MSG_EN[$MSG_SMART_RECYCLE_FILE_WOULD_BE_KEPT]="RBK0222W: Smart backup strategy would keep %s."
 MSG_DE[$MSG_SMART_RECYCLE_FILE_WOULD_BE_KEPT]="RBK0222W: Smart Backup Strategie würde %s Backup behalten."
+MSG_UMOUNT_ERROR=223
+MSG_EN[$MSG_UMOUNT_ERROR]="RBK0223E: Umount %s to %s failed. RC %s."
+MSG_DE[$MSG_UMOUNT_ERROR]="RBK0223E: Umount von %s an %s ist fehlerhaft."
 
 declare -A MSG_HEADER=( ['I']="---" ['W']="!!!" ['E']="???" )
 
@@ -3748,7 +3751,7 @@ function restore() {
 			else
 				ext=$BOOT_TAR_EXT
 				logItem "Restoring boot partition from $TAR_FILE to $BOOT_PARTITION"
-				mountAndCheck $BOOT_PARTITION "$MNT_POINT/boot"
+				mountAndCheck $BOOT_PARTITION "$MNT_POINT"
 				pushd "$MNT_POINT" &>>"$LOG_FILE"
 				if (( $PROGRESS )); then
 					cmd="pv -f $TAR_FILE | tar -xf -"
@@ -3767,6 +3770,7 @@ function restore() {
 
 			writeToConsole $MSG_LEVEL_DETAILED $MSG_FORMATTING_SECOND_PARTITION "$ROOT_PARTITION"
 			local check=""
+			(( $REGRESSION_TEST )) && check="-F "
 			if (( $CHECK_FOR_BAD_BLOCKS )); then
 				writeToConsole $MSG_LEVEL_MINIMAL $MSG_DETAILED_ROOT_CHECKING "$ROOT_PARTITION"
 				check="-c"
@@ -5789,6 +5793,15 @@ function updateRestoreReminder() {
 
 function mountAndCheck() { # device mountpoint
 	logEntry "$1 - $2"
+	if ( isMounted "$1" ); then
+		logItem "$1 mounted - unmouting"
+		umount "$1" &>>"$LOG_FILE"
+		if (( $rc )); then
+			writeToConsole $MSG_LEVEL_MINIMAL $MSG_UMOUNT_ERROR "$1" "$2" "$rc"
+			logExit $rc
+			exitError $RC_MISC_ERROR
+		fi
+	fi
 	mount "$1" "$2" &>>"$LOG_FILE"
 	local rc=$?
 	if (( $rc )); then

@@ -28,7 +28,7 @@ if [[ $UID != 0 ]]; then
 	exit $?
 fi
 
-set -e
+#set -e
 
 MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
@@ -69,7 +69,7 @@ exec 2> >(tee -a "$LOG_FILE")
 
 DEBUG=0
 
-VMs=~/vmware/kvm
+VMs=$CURRENT_DIR/qemu
 
 BACKUP1="/disks/bigdata/raspibackupTest_P/raspberrypi"
 BACKUP2="/disks/bigdata/raspibackupTest_N/raspberrypi"
@@ -109,11 +109,9 @@ for backup in $BACKUPS_TO_RESTORE; do
 	echo "Processing backup $backup ..."
 
 	IMAGES_TO_RESTORE=( $(ls -d "$backup"*"/raspberrypi-"*"-backup-"* | grep -v ".log$") )
-#	IMAGES_TO_RESTORE=( $(ls -d "$backup/raspibackup-"*"-backup-"* | grep -v ".log$") )
-#	IMAGES_TO_RESTORE=( $(ls -d "$backup/raspibackup-tar-backup-"* "$backup/raspibackup-rsync-backup-"* | grep -v ".log$") )
-#	IMAGES_TO_RESTORE=( $(ls -d "$backup/raspberrypi-dd-backup-"* | grep -v ".log$") )
-#	IMAGES_TO_RESTORE=( $(ls -d "$backup/raspberrypi-tar-backup-"* | grep -v ".log$") )
-#	IMAGES_TO_RESTORE=( $(ls -d "$backup/raspberrypi-rsync-backup-"* | grep -v ".log$") )
+#	IMAGES_TO_RESTORE=( $(ls -d "$backup"*"/raspberrypi-"*"dd-backup-"* | grep -v ".log$") )
+	IMAGES_TO_RESTORE=( $(ls -d "$backup"*"/raspberrypi-"*"tar-backup-"* | grep -v ".log$") )
+#	IMAGES_TO_RESTORE=( $(ls -d "$backup"*"/raspberrypi-*"*"rsync-backup-"* | grep -v ".log$") )
 
 	log "Number of images: ${#IMAGES_TO_RESTORE[@]}"
 	i=1
@@ -142,53 +140,81 @@ for backup in $BACKUPS_TO_RESTORE; do
 			log "Removing old image"
 			rm $VMs/raspiBackupRestore.img &>/dev/null
 
-			echo "Creating image of size $RESTORE_DISK_SIZE"
+			echo "Creating image $VMs/raspiBackupRestore.img of size $RESTORE_DISK_SIZE"
 			qemu-img create -f raw $VMs/raspiBackupRestore.img $RESTORE_DISK_SIZE
 
 			log "mounting image"
 			sudo losetup -vP $LOOP $VMs/raspiBackupRestore.img
 			if [[ ! $image =~ -dd.?- ]]; then
-				dd if=$MBR_FILE of=$LOOP count=1 # primt loop partitions
+				dd if=$MBR_FILE of=$LOOP count=1 # prime loop partitions
 			fi
 
-			echo "Starting restore of $image"
+			[[ $image =~ -sdbootonly- ]]
+			SDBOOTONLY=$((! $? ))
 
-			../raspiBackup.sh -d $LOOP $OPTS -Y "$image"
-			rc=$?
+			if (( ! $SDBOOTONLY )); then
 
-			if [[ $rc != 0 ]]; then
-				echo "Error running script: $rc"
-				exit 127
-			fi
+				echo "Starting restore of $image"
 
-			losetup -D
-
-			LOOP=$(losetup -f)
-			losetup -vP $LOOP "$VMs/raspiBackupRestore.img"
-			log "Updating fake-hwclock on restored image"
-			mount ${LOOP}p2 /mnt
-			echo $(date +"%Y-%m-%d %T") > /mnt/etc/fake-hwclock.data
-			log "Adding my key"
-			cat /root/.ssh/id_rsa.pub >> /mnt/root/.ssh/authorized_keys
-			log "Adding my issue"
-			echo "*** $image ***" >> /mnt/etc/issue
-			sync
-
-			log "Waiting for umount"
-			while :; do
-				umount /mnt &>/dev/null
+				../raspiBackup.sh -d $LOOP $OPTS -Y "$image"
 				rc=$?
-				if [[ $rc == 0 || $rc == 1 ]]; then  # umount OK
-					break
-				fi
-				sleep 3
-			done
-			log "Done"
 
-			losetup -d $LOOP
-			log "Syncing"
-			sync
-			sleep 3
+				if [[ $rc != 0 ]]; then
+					echo "Error running script: $rc"
+					exit 127
+				fi
+
+				losetup -D
+
+				LOOP=$(losetup -f)
+				losetup -vP $LOOP "$VMs/raspiBackupRestore.img"
+				log "Updating fake-hwclock on restored image"
+				mount ${LOOP}p2 /mnt
+				echo $(date +"%Y-%m-%d %T") > /mnt/etc/fake-hwclock.data
+				log "Adding my key"
+				cat /root/.ssh/id_rsa.pub >> /mnt/root/.ssh/authorized_keys
+				log "Adding my issue"
+				echo "*** $image ***" >> /mnt/etc/issue
+				sync
+
+				log "Waiting for umount"
+				while :; do
+					umount /mnt &>/dev/null
+					rc=$?
+					if [[ $rc == 0 || $rc == 1 ]]; then  # umount OK
+						break
+					fi
+					sleep 3
+				done
+				log "Done"
+
+				losetup -d $LOOP
+				log "Syncing"
+				sync
+				sleep 3
+			else # sdbootonly
+				echo "Starting SDONLY restore of $image"
+
+				echo "Creating image $VMs/raspiBackupRestoreEXT.img of size $RESTORE_DISK_SIZE"
+				qemu-img create -f raw $VMs/raspiBackupRestoreEXT.img $RESTORE_DISK_SIZE
+
+				log "mounting EXT image"
+				LOOPEXT=$(losetup -f)
+
+				sudo losetup -vP $LOOPEXT $VMs/raspiBackupRestoreEXT.img
+				if [[ ! $image =~ -dd.?- ]]; then
+					dd if=$MBR_FILE of=$LOOPEXT count=1 # prime loop partitions
+				fi
+
+				../raspiBackup.sh -d $LOOP -R $LOOPEXT $OPTS -Y "$image"
+				rc=$?
+
+				if [[ $rc != 0 ]]; then
+					echo "Error running script: $rc"
+					exit 127
+				fi
+
+			fi
 
 			echo "Starting restored vm"
 			$VMs/start.sh raspiBackupRestore.img &
