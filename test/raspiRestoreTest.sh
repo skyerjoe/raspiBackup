@@ -23,6 +23,9 @@
 #
 #######################################################################################################################
 
+SCRIPT_DIR=$( cd $( dirname ${BASH_SOURCE[0]}); pwd | xargs readlink -f)
+source $SCRIPT_DIR/constants.sh
+
 if [[ $UID != 0 ]]; then
 	sudo $0 $@
 	exit $?
@@ -34,11 +37,11 @@ MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
 CURRENT_DIR=$(pwd)
 
-GIT_DATE="$Date: 2019-11-24 20:26:47 +0100$"
+GIT_DATE="$Date: 2019-12-15 19:36:28 +0100$"
 GIT_DATE_ONLY=${GIT_DATE/: /}
 GIT_DATE_ONLY=$(cut -f 2 -d ' ' <<< $GIT_DATE)
 GIT_TIME_ONLY=$(cut -f 3 -d ' ' <<< $GIT_DATE)
-GIT_COMMIT="$Sha1: f53ff96$"
+GIT_COMMIT="$Sha1: f204adf$"
 GIT_COMMIT_ONLY=$(cut -f 2 -d ' ' <<< $GIT_COMMIT | sed 's/\$//')
 
 GIT_CODEVERSION="$MYSELF $VERSION, $GIT_DATE_ONLY/$GIT_TIME_ONLY - $GIT_COMMIT_ONLY"
@@ -71,14 +74,9 @@ DEBUG=0
 
 VMs=$CURRENT_DIR/qemu
 
-BACKUP1="/disks/bigdata/raspibackupTest_P/raspberrypi"
-BACKUP2="/disks/bigdata/raspibackupTest_N/raspberrypi"
-BACKUP3="/disks/bigdata/raspibackupTest_0.6.1.1_N/raspibackup"
-BACKUP4="/disks/bigdata/raspibackupTest_0.6.1.1_P/raspibackup"
-BACKUP5="/disks/bigdata/raspibackupTest_0.5.15.9_N/raspibackup"
+BACKUP1="/disks/bigdata/raspibackupTest_P/*"
+BACKUP2="/disks/bigdata/raspibackupTest_N/*"
 
-#BACKUPS_TO_RESTORE="$BACKUP2 $BACKUP3 $BACKUP5"
-#BACKUPS_TO_RESTORE="$BACKUP1 $BACKUP2 $BACKUP3 $BACKUP4 $BACKUP5"
 BACKUPS_TO_RESTORE="$BACKUP2 $BACKUP1"
 
 #RESTORE_DISK_SIZE=$((1024*1024*1024*2-1024*1024*250))
@@ -110,7 +108,7 @@ for backup in $BACKUPS_TO_RESTORE; do
 
 	IMAGES_TO_RESTORE=( $(ls -d "$backup"*"/raspberrypi-"*"-backup-"* | grep -v ".log$") )
 #	IMAGES_TO_RESTORE=( $(ls -d "$backup"*"/raspberrypi-"*"dd-backup-"* | grep -v ".log$") )
-	IMAGES_TO_RESTORE=( $(ls -d "$backup"*"/raspberrypi-"*"tar-backup-"* | grep -v ".log$") )
+#	IMAGES_TO_RESTORE=( $(ls -d "$backup"*"/raspberrypi-"*"tar-backup-"* | grep -v ".log$") )
 #	IMAGES_TO_RESTORE=( $(ls -d "$backup"*"/raspberrypi-*"*"rsync-backup-"* | grep -v ".log$") )
 
 	log "Number of images: ${#IMAGES_TO_RESTORE[@]}"
@@ -134,7 +132,7 @@ for backup in $BACKUPS_TO_RESTORE; do
 			fi
 		fi
 
-		retry=3
+		retry=1
 
 		while (( retry > 0 )); do
 			log "Removing old image"
@@ -319,37 +317,14 @@ for backup in $BACKUPS_TO_RESTORE; do
 			echo "@@@@@ Restore successfull"
 		fi
 
-		echo "Shutdown VM pid $pid waiting ..."
+		echo "Shutdown VM pid $pid ..."
 
-		PID=$pid
 		# get firstly created child process id, which is running all tasks
 		PID_CHILD=$(pgrep -o -P $pid)
 		PID_CHILD2=$(pgrep -o -P $PID_CHILD)
 
 		kill -9 $PID_CHILD2
 
-		#kill -- -$(ps -o pgid= $pid | grep -o [0-9]*)
-
-		#echo "Shutting down vm..."
-		#sshexec "shutdown -h now"
-
-		#p=$(pgrep start.sh)
-		#sudo kill -9 -${p}
-
-		#sudo pkill -P -{$pid}
-
-		#kill -KILL $(($pid + 1))
-		#ppid=$(pgrep -P $pid)
-		#kill -- -"$pid"
-		#p1=$(( ppid+1 ))
-		#pkill -KILL $p1
-
-		#( sleep 3;sudo kill -TERM $(pgrep -P $pid) ) &
-		#ssh root@$DEPLOYED_IP shutdown -h now
-		#log "Waiting for VM to terminate. PID: $pid"
-		#read
-		#wait $p1
-		#wait $(pgrep -P $pid)
 	done
 
 done

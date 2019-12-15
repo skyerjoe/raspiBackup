@@ -1,3 +1,4 @@
+#!/bin/bash
 #######################################################################################################################
 #
 # raspiBackup regression test
@@ -21,72 +22,81 @@
 #
 #######################################################################################################################
 
-#!/bin/bash
+SCRIPT_DIR=$( cd $( dirname ${BASH_SOURCE[0]}); pwd | xargs readlink -f)
+source $SCRIPT_DIR/constants.sh
 
-set -e
+ENVIRONMENTS_TO_TEST=${1:-"SD USB"}
+TYPES_TO_TEST=${2:-"dd ddz tar tgz rsync"}
+MODES_TO_TEST=${3:-"n p"}
+BOOTMODE_TO_TEST=${4:-"d t"}
 
 NOTIFY_EMAIL="$(<email.conf)"
+
+SMARTRECYCLE_TEST=0
+
+function standardTest() {
+
+	local rc
+
+	./raspiBackupTest.sh "$1" "$2" "$3" "$4"
+	rc=$?
+
+	if [[ $rc != 0 ]]; then
+		echo "??? Backup regression test failed"
+		echo "End: $endTime" | mailx -s "??? Backup regression test failed" "$NOTIFY_EMAIL"
+		exit 127
+	fi
+
+	./raspiRestoreTest.sh "$1" "$2" "$3" "$4"
+	rc=$?
+
+	if [[ $rc != 0 ]]; then
+		echo "??? Restore regression test failed"
+		echo "End: $endTime" | mailx -s "??? Restore regression test failed" "$NOTIFY_EMAIL"
+		exit 127
+	fi
+
+}
+
+function smartRecycleTest() {
+
+	local rc
+
+	./raspiBackup7412Test.sh
+	rc=$?
+
+	if [[ $rc != 0 ]]; then
+		echo "??? 7412 regression test failed"
+		echo "End: $endTime" | mailx -s "??? 7412 regression test failed" "$NOTIFY_EMAIL"
+		exit 127
+	fi
+}
 
 if (( $UID != 0 )); then
 	echo "Call me as root"
 	exit 1
 fi
 
+rm $LOG_RASPIBACKUP
+rm $LOG_TESTRUN
+
 startTime=$(date +%Y-%M-%d/%H:%m:%S)
 echo "Start: $startTime"
 echo "Start: $startTime" | mailx -s "--- Backup regression started" "$NOTIFY_EMAIL"
 
-./raspiBackupTest.sh
-rc=$?
+for environment in $ENVIRONMENTS_TO_TEST; do
+	for mode in $MODES_TO_TEST; do
+		for type in $TYPES_TO_TEST; do
+			[[ $type =~ dd && $mode == "p" ]] && continue # dd not supported for -P
+			for bootmode in $BOOTMODE_TO_TEST; do
+				[[ $bootmode == "t" &&  ( $type =~ dd || $mode == "p" ) ]] && continue # -B+ not supported for -P and dd
+				standardTest "$environment" "$type" "$mode" "$bootmode"
+			done
+		done
+	done
+done
 
-endTime=$(date +%Y-%M-%d/%H:%m:%S)
-
-if [[ $rc != 0 ]]; then
-	echo "??? Backup regression test failed"
-	echo "End: $endTime" | mailx -s "??? Backup regression test failed" "$NOTIFY_EMAIL"
-	exit 127
-fi
-
-echo "End: $endTime" | mailx -s "--- Backup regression finished" "$NOTIFY_EMAIL"
-
-startTime=$(date +%Y-%M-%d/%H:%m:%S)
-echo "Start: $startTime"
-echo "Start: $startTime" | mailx -s "--- Restore regression started" "$NOTIFY_EMAIL"
-
-./raspiRestoreTest.sh
-rc=$?
-
-endTime=$(date +%Y-%M-%d/%H:%m:%S)
-
-echo "Start: $startTime - End: $endTime"
-
-if [[ $rc != 0 ]]; then
-	echo "??? Restore regression test failed"
-	echo "End: $endTime" | mailx -s "??? Restore regression test failed" "$NOTIFY_EMAIL"
-	exit 127
-fi
-
-echo "End: $endTime" | mailx -s "--- Restore regression finished" "$NOTIFY_EMAIL"
+(( $SMARTRECYCLE_TEST )) && smartRecycleTest
 
 echo ":-) Raspibackup regression test finished successfully"
 echo "" | mailx -s ":-) Raspibackup regression test finished sucessfully" $attach "$NOTIFY_EMAIL"
-
-startTime=$(date +%Y-%M-%d/%H:%m:%S)
-echo "Start: $startTime"
-echo "Start: $startTime" | mailx -s "--- 7412 regression started" "$NOTIFY_EMAIL"
-
-./raspiBackup7412Test.sh
-rc=$?
-
-endTime=$(date +%Y-%M-%d/%H:%m:%S)
-
-echo "Start: $startTime - End: $endTime"
-
-if [[ $rc != 0 ]]; then
-	echo "??? 7412 regression test failed"
-	echo "End: $endTime" | mailx -s "??? 7412 regression test failed" "$NOTIFY_EMAIL"
-	exit 127
-fi
-
-echo "End: $endTime" | mailx -s "--- 7412 regression finished" "$NOTIFY_EMAIL"
-

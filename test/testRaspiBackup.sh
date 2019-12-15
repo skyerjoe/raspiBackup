@@ -1,4 +1,4 @@
-#!/bin/bash +x
+#!/bin/bash -x
 #######################################################################################################################
 #
 # raspiBackup backup creation script for backup regression test
@@ -22,17 +22,12 @@
 #
 #######################################################################################################################
 
+SCRIPT_DIR=$( cd $( dirname ${BASH_SOURCE[0]}); pwd | xargs readlink -f)
+source $SCRIPT_DIR/constants.sh
+
 DEBUG=1
 
-BACKUPTYPE_DD="dd"
-BACKUPTYPE_DDZ="ddz"
-BACKUPTYPE_TAR="tar"
-BACKUPTYPE_TGZ="tgz"
-BACKUPTYPE_RSYNC="rsync"
 declare -A FILE_EXTENSION=( [$BACKUPTYPE_DD]="img" [$BACKUPTYPE_DDZ]="img.gz" [$BACKUPTYPE_RSYNC]="[it]mg" [$BACKUPTYPE_TGZ]="tgz" [$BACKUPTYPE_TAR]="tar" )
-
-BOOTMODE_DD="-B-"
-BOOTMODE_TAR="-B+"
 
 PARTITIONS_PER_BACKUP=2
 
@@ -54,8 +49,8 @@ BACKUP_PATH=${2:-"raspibackupTest"}
 BACKUP_PATH="/mnt/$BACKUP_PATH"
 ENVIRONMENT=${3:-"SD USB SDBOOTONLY"}
 TYPES_TO_TEST=${4:-"dd ddz tar tgz rsync"}
-MODES_TO_TEST=${5:-"N P"}
-BOOT_MODES=${6:-"$BOOTMODE_DD $BOOTMODE_TAR"}
+MODES_TO_TEST=${5:-"n p"}
+BOOT_MODES=${6:-"d t"}
 
 declare -A processedFiles
 
@@ -100,12 +95,15 @@ function isMounted() {
 
 createV612Backups() { # number of backups, keep backups
 
+	local mode backupType bootMode bM
+
 	for mode in $MODES_TO_TEST; do
 		for backupType in $TYPES_TO_TEST; do
-			[[ $backupType =~ dd && $mode == "P" ]] && continue # dd not supported for -P
+			[[ $backupType =~ dd && $mode == "p" ]] && continue # dd not supported for -P
 			for bootMode in $BOOT_MODES; do
-				[[ $bootMode == "$BOOTMODE_TAR" &&  ( $backupType =~ dd || $mode == "P" ) ]] && continue # -B+ not supported for -P and dd
-				createBackups $backupType $1 $mode $2 $bootMode
+				[[ $bootMode == "t" &&  ( $backupType =~ dd || $mode == "p" ) ]] && continue # -B+ not supported for -P and dd
+				[[ $bootMode == "t" ]] && bM="$BOOTMODE_TAR" || bM="$BOOTMODE_DD"
+				createBackups $backupType $1 $mode $2 $bM
 			done
 		done
 	done
@@ -116,13 +114,14 @@ function createBackups() { # type (dd, ddz, rsync, ...) count type (N,P) keep ..
 	local i rc parms
 
 	local m=""
-	if [[ $3 == "P" ]]; then
+	if [[ $3 == "p" ]]; then
 		m="-P"
 	fi
 
 	for (( i=1; i<=$2; i++)); do
-		echo "--- Creating $1 backup number $i of mode $3 and option $5 in ${BACKUP_PATH}_$3"
-		./raspiBackup.sh -t $1 $PARMS $m -k $4 "$5" "${BACKUP_PATH}_$3"
+		echo "--- Creating $1 backup number $i of mode $3 and option $5 in ${BACKUP_PATH}_${3^^}"
+		log "./raspiBackup.sh -t $1 $PARMS $m -k $4 "$5" "${BACKUP_PATH}_${3^^}""
+		./raspiBackup.sh -t $1 $PARMS $m -k $4 "$5" "${BACKUP_PATH}_${3^^}"
 		rc=$?
 
 		local logFile=$(getLogName $1 $3)
@@ -241,10 +240,10 @@ function checkV612BootBackups() { # type (dd, ddz, rsync, ...) count mode (N,P)
 		local expectedFiles=4711
 
 		case $3 in
-			N)	bootCnt=$(ls -d "$backup/"* 2>/dev/null| egrep ".(tmg|img|mbr|sfdisk)$" | wc -l);
+			n)	bootCnt=$(ls -d "$backup/"* 2>/dev/null| egrep ".(tmg|img|mbr|sfdisk)$" | wc -l);
 				expectedFiles=3
 				;;
-			P)	bootCnt=$(ls -d "$backup/"* 2>/dev/null| egrep ".(blkid|mbr|sfdisk|parted)$" | wc -l);
+			p)	bootCnt=$(ls -d "$backup/"* 2>/dev/null| egrep ".(blkid|mbr|sfdisk|parted)$" | wc -l);
 				expectedFiles=4
 				;;
 			*)	log "error - $1 $2 $3"
@@ -358,40 +357,11 @@ function collectBackups() { # type (dd, ddz, rsync, ...) mode (N,P)
 function cleanup() {
 
 	for m in $MODES_TO_TEST; do
-		log "Removing ${BACKUP_PATH}_$m"
-		rm -rf ${BACKUP_PATH}_$m
-		log "Creating ${BACKUP_PATH}_$m"
-		mkdir -p ${BACKUP_PATH}_$m
-	done
-}
-
-function primeBackups() {
-
-	for m in $MODES_TO_TEST; do
-
-		if [[ $m == "N" ]]; then
-			if (( $USE_V5 )); then
-				log "Copying existing old version backups V5"
-				cp -lR ${BACKUP_PATH}_0.5.15.9_N/* ${BACKUP_PATH}_$m &>/dev/null
-			fi
-			if (( $USE_V6 )); then
-				log "Copying existing old version backups V6 N"
-				cp -lR ${BACKUP_PATH}_0.6.1.1_N/* ${BACKUP_PATH}_N &>/dev/null
-			fi
-			if (( $USE_V6N )); then
-				log "Copying existing new version N backups V6"
-				cp -lR ${BACKUP_PATH}_0.6.1.2_N/* ${BACKUP_PATH}_$m &>/dev/null
-			fi
-		else
-			if (( $USE_V6 )); then
-				log "Copying existing old version backups V6 P"
-				cp -lR ${BACKUP_PATH}_0.6.1.1_P/* ${BACKUP_PATH}_P &>/dev/null
-			fi
-			if (( $USE_V6N )); then
-				log "Copying existing new version P backups V6"
-				cp -lR ${BACKUP_PATH}_0.6.1.2_P/* ${BACKUP_PATH}_$m &>/dev/null
-			fi
-		fi
+		local mm=${m^^}
+		log "Removing ${BACKUP_PATH}_$mm"
+		rm -rf ${BACKUP_PATH}_$mm
+		log "Creating ${BACKUP_PATH}_$mm"
+		mkdir -p ${BACKUP_PATH}_$mm
 	done
 }
 
