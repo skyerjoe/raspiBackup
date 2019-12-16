@@ -25,10 +25,20 @@
 SCRIPT_DIR=$( cd $( dirname ${BASH_SOURCE[0]}); pwd | xargs readlink -f)
 source $SCRIPT_DIR/constants.sh
 
-ENVIRONMENTS_TO_TEST=${1:-"SD USB"}
-TYPES_TO_TEST=${2:-"dd ddz tar tgz rsync"}
-MODES_TO_TEST=${3:-"n p"}
-BOOTMODE_TO_TEST=${4:-"d t"}
+ENVIRONMENTS_TO_TEST="sd usb"
+TYPES_TO_TEST="dd ddz tar tgz rsync"
+MODES_TO_TEST="n p"
+BOOTMODE_TO_TEST="d t"
+
+if [[ "$1" == "-h" ]]; then
+	echo "Environments types modes bootmodes"
+	exit 42
+elif (( $# > 1 )); then
+	ENVIRONMENTS_TO_TEST=${1:-"$ENVIRONMENTS_TO_TEST"}
+	TYPES_TO_TEST=${2:-"$TYPES_TO_TEST"}
+	MODES_TO_TEST=${3:-"$MODES_TO_TEST"}
+	BOOTMODE_TO_TEST=${4:-"$BOOTMODE_TO_TEST"}
+fi
 
 NOTIFY_EMAIL="$(<email.conf)"
 
@@ -47,7 +57,7 @@ function standardTest() {
 		exit 127
 	fi
 
-	./raspiRestoreTest.sh "$1" "$2" "$3" "$4"
+	./raspiRestoreTest.sh
 	rc=$?
 
 	if [[ $rc != 0 ]]; then

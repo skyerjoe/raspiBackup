@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 #######################################################################################################################
 #
 # raspiBackup backup creation script for backup regression test
@@ -240,13 +240,13 @@ function checkV612BootBackups() { # type (dd, ddz, rsync, ...) count mode (N,P)
 		local expectedFiles=4711
 
 		case $3 in
-			n)	bootCnt=$(ls -d "$backup/"* 2>/dev/null| egrep ".(tmg|img|mbr|sfdisk)$" | wc -l);
+			N)	bootCnt=$(ls -d "$backup/"* 2>/dev/null| egrep ".(tmg|img|mbr|sfdisk)$" | wc -l);
 				expectedFiles=3
 				;;
-			p)	bootCnt=$(ls -d "$backup/"* 2>/dev/null| egrep ".(blkid|mbr|sfdisk|parted)$" | wc -l);
+			P)	bootCnt=$(ls -d "$backup/"* 2>/dev/null| egrep ".(blkid|mbr|sfdisk|parted)$" | wc -l);
 				expectedFiles=4
 				;;
-			*)	log "error - $1 $2 $3"
+			*)	log "error invalid mode - $1 $2 $3"
 				exit 127
 				;;
 		esac
@@ -326,8 +326,8 @@ function checkAllV612Backups() {  # number of backups
 
 	for mode in $MODES_TO_TEST; do
 		for backupType in $TYPES_TO_TEST; do
-			[[ $backupType =~ "dd" && $mode == "P" ]] && continue
-			checkV612Backups $backupType $1 $mode
+			[[ $backupType =~ "dd" && $mode == "p" ]] && continue
+			checkV612Backups $backupType $1 ${mode^^}
 		done
 	done
 

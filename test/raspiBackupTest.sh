@@ -65,7 +65,7 @@ if (( $CLEANUP )); then
 	echo "Cleaning up backup directories"
 	rm -rf $BACKUP_ROOT_DIR/${BACKUP_DIR}_N > /dev/null
 	rm -rf $BACKUP_ROOT_DIR/${BACKUP_DIR}_P > /dev/null
-fi 
+fi
 
 echo "Creating target backup directies"
 mkdir -p $BACKUP_ROOT_DIR/${BACKUP_DIR}_N
@@ -143,13 +143,16 @@ sshexec "time ~/$TEST_SCRIPT $BACKUP_MOUNT_POINT \"$BACKUP_DIR\" \"$environment\
 
 tmp=$(mktemp)
 
-echo "Downloading testrun log"
-scp root@$VM_IP:/root/testRaspiBackup.log ./$tmp 1>/dev/null
-cat ./$tmp >> $LOG_TESTRUN
+echo "Downloading testRaspiBackup log"
+scp root@$VM_IP:/root/testRaspiBackup.log $tmp 1>/dev/null
+cat $tmp >> $LOG_TESTRUN
+
+grep "Backup test finished successfully" $tmp
+rc=$?
 
 echo "Downloading raspiBackup.log log"
-scp root@$VM_IP:/root/raspiBackup.log ./$tmp 1>/dev/null
-cat ./$tmp >> $LOG_RASPIBACKUP
+scp root@$VM_IP:/root/raspiBackup.log $tmp 1>/dev/null
+cat $tmp >> $LOG_RASPIBACKUP
 
 if (( ! $KEEP_VM )); then
 	echo "Shuting down"
@@ -157,12 +160,11 @@ if (( ! $KEEP_VM )); then
 	sudo pkill qemu
 fi
 
-grep "Backup test finished successfully" testRaspiBackup.log
 
-if (( $? > 0 )); then
-	echo "??? Backup failures: $failures"
+if (( $rc != 0 )); then
+	echo "??? Backup failed $1 $2 $3 $4"
 	exit 127
 else
-	echo "--- Backup test successfull"
+	echo "--- Backup successfull $1 $2 $3 $4"
 	exit 0
 fi

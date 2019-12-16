@@ -329,6 +329,8 @@ for backup in $BACKUPS_TO_RESTORE; do
 
 done
 
+rm $VMs/raspiBackupRestore.img &>/dev/null
+
 if (( failures > 0 )); then
 	echo "??? Restore failures: $failures"
 	exit 127
