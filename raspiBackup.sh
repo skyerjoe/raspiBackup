@@ -60,11 +60,11 @@ IS_HOTFIX=$((! $? ))
 MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
 
-GIT_DATE="$Date: 2020-01-10 13:31:55 +0100$"
+GIT_DATE="$Date: 2020-01-11 10:24:08 +0100$"
 GIT_DATE_ONLY=${GIT_DATE/: /}
 GIT_DATE_ONLY=$(cut -f 2 -d ' ' <<< $GIT_DATE)
 GIT_TIME_ONLY=$(cut -f 3 -d ' ' <<< $GIT_DATE)
-GIT_COMMIT="$Sha1: 72986eb$"
+GIT_COMMIT="$Sha1: a3fc016$"
 GIT_COMMIT_ONLY=$(cut -f 2 -d ' ' <<< $GIT_COMMIT | sed 's/\$//')
 
 GIT_CODEVERSION="$MYSELF $VERSION, $GIT_DATE_ONLY/$GIT_TIME_ONLY - $GIT_COMMIT_ONLY"
@@ -3549,6 +3549,10 @@ function areDevicesUnique() {
 	while read line; do
 		if grep -q ID_FS_UUID= <<< "$line"; then
 			local uuid="$(cut -f2 -d= <<< "$line")"
+			if grep -q ID_FS_UUID_SUB= <<< "$line"; then
+				local uuidsub="$(cut -f2 -d= <<< "$line")"
+				uuid="${uuid}_${uuidsub}"
+			fi
 			if [[ ${UUID[$uuid]}+abc != "+abc" ]]; then
 				logItem "UUID $uuid is not unique"
 				unique=1
