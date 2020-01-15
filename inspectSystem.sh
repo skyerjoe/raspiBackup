@@ -46,6 +46,9 @@ MYSELF="${0##*/}"
 MYNAME=${MYSELF%.*}
 LOGFILE="raspiBackup.info"
 
+GIT_DATE="$Date: 2020-01-13 19:46:38 +0100$"
+GIT_COMMIT="$Sha1: aa2d7b5$"
+
 rm $LOGFILE &>/dev/null
 
 function willExecute() {

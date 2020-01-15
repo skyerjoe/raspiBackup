@@ -60,11 +60,11 @@ IS_HOTFIX=$((! $? ))
 MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
 
-GIT_DATE="$Date: 2020-01-13 12:18:13 +0100$"
+GIT_DATE="$Date: 2020-01-15 18:33:59 +0100$"
 GIT_DATE_ONLY=${GIT_DATE/: /}
 GIT_DATE_ONLY=$(cut -f 2 -d ' ' <<< $GIT_DATE)
 GIT_TIME_ONLY=$(cut -f 3 -d ' ' <<< $GIT_DATE)
-GIT_COMMIT="$Sha1: 51d0f13$"
+GIT_COMMIT="$Sha1: 55ad7fa$"
 GIT_COMMIT_ONLY=$(cut -f 2 -d ' ' <<< $GIT_COMMIT | sed 's/\$//')
 
 GIT_CODEVERSION="$MYSELF $VERSION, $GIT_DATE_ONLY/$GIT_TIME_ONLY - $GIT_COMMIT_ONLY"
@@ -5991,7 +5991,7 @@ function SR_listYearlyBackups() { # directory
 			# today is 20191117
 			# date +%Y -d "0 year ago" -> 2019
 			local d=$(date +%Y -d "${i} year ago")
-			ls $1 | egrep "\-backup\-$d[0-9]{2}[0-9]{2}" | sort -ur | tail -n 1 # find earliest yearly backup
+			ls $1 | egrep "\-${BACKUPTYPE}\-backup\-$d[0-9]{2}[0-9]{2}" | sort -ur | tail -n 1 # find earliest yearly backup
 		done
 	fi
 	logExit
@@ -6007,7 +6007,7 @@ function SR_listMonthlyBackups() { # directory
 			# today is 20191117
 			# date -d "$(date +%Y%m15) -0 month" +%Y%m -> 201911
 			local d=$(date -d "$(date +%Y%m15) -${i} month" +%Y%m) # get month
-			ls $1 | egrep "\-backup\-$d[0-9]{2}" | sort -ur | tail -n 1 # find earlies monthly backup
+			ls $1 | egrep "\-${BACKUPTYPE}\-backup\-$d[0-9]{2}" | sort -ur | tail -n 1 # find earlies monthly backup
 		done
 	fi
 	logExit
@@ -6030,7 +6030,7 @@ function SR_listWeeklyBackups() { # directory
 			local mon=$(date +%Y%m%d -d "$last monday -${i} weeks") # calculate monday of week
 			local dl=""
 			for ((d=0;d<=6;d++)); do	# now build list of week days of week (mon-sun)
-				dl="$(date +%Y%m%d -d "$mon + $d day") $dl"
+				dl="\-${BACKUPTYPE}\-backup\-$(date +%Y%m%d -d "$mon + $d day") $dl"
 			done
 			ls $1 | grep -e "$(echo -n $dl | sed "s/ /\\\|/g")" | sort -ur | tail -n 1 # use earliest backup of this week
 		done
@@ -6046,7 +6046,7 @@ function SR_listDailyBackups() { # directory
 			# today is 20191117
 			# date +%Y%m%d -d "-1 day" -> 20191116
 			local d=$(date +%Y%m%d -d "-${i} day") # get day
-			ls $1 | grep "\-backup\-$d" | sort -ur | head -n 1 # find most current backup of this day
+			ls $1 | grep "\-${BACKUPTYPE}\-backup\-$d" | sort -ur | head -n 1 # find most current backup of this day
 		done
 	fi
 	logExit
@@ -6071,14 +6071,16 @@ function SR_getAllBackups() { # directory
 
 function SR_listUniqueBackups() { #directory
 	logEntry $1
-	local r="$(SR_getAllBackups $1 | sort -u)"
+	local r="$(SR_getAllBackups $1 | sort -u )"
+	logItem "getAllBackups: $(wc -l <<< "$r")$NL$r"
 	echo "$r"
 	logExit "$r"
 }
 
 function SR_listBackupsToDelete() { # directory
 	logEntry $1
-	local r="$(ls $1 | grep -v -e "$(echo -n $(SR_listUniqueBackups $1) | sed "s/ /\\\|/g")")"
+	local r="$(ls $1 | grep -v -e "$(echo -n $(SR_listUniqueBackups $1) | sed "s/ /\\\|/g")" | grep "\-${BACKUPTYPE}\-backup\-" )" # make sure to delete only backup type files
+	logItem "listBackupsToDelete: $(wc -l <<< "$r")$NL$r"
 	echo "$r"
 	logExit "$r"
 }

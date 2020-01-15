@@ -7,7 +7,7 @@
 #
 ########################################################################################################################
 #
-#    Copyright (C) 2018 framp at linux-tips-and-tricks dot de
+#    Copyright (c) 2018 framp at linux-tips-and-tricks dot de
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -23,6 +23,9 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.#
 #
 #######################################################################################################################
+
+GIT_DATE="$Date: 2020-01-13 19:46:38 +0100$"
+GIT_COMMIT="$Sha1: aa2d7b5$"
 
 if [[ -f ../raspiBackup.sh ]]; then
 	. ../raspiBackup.sh --include

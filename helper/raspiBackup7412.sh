@@ -15,7 +15,7 @@
 #
 #######################################################################################################################
 #
-#   Copyright # (C) 2019 - framp at linux-tips-and-tricks dot de
+#   Copyright (c) 2019 - framp at linux-tips-and-tricks dot de
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -38,11 +38,11 @@ MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
 VERSION="0.1"
 
-set +u;GIT_DATE="$Date: 2020-01-08 21:27:51 +0100$"; set -u
+set +u;GIT_DATE="$Date: 2020-01-13 19:46:38 +0100$"; set -u
 GIT_DATE_ONLY=${GIT_DATE/: /}
 GIT_DATE_ONLY=$(cut -f 2 -d ' ' <<< $GIT_DATE)
 GIT_TIME_ONLY=$(cut -f 3 -d ' ' <<< $GIT_DATE)
-set +u;GIT_COMMIT="$Sha1: d0fcae3$";set -u
+set +u;GIT_COMMIT="$Sha1: aa2d7b5$";set -u
 GIT_COMMIT_ONLY=$(cut -f 2 -d ' ' <<< $GIT_COMMIT | sed 's/\$//')
 
 GIT_CODEVERSION="$MYSELF $VERSION, $GIT_DATE_ONLY/$GIT_TIME_ONLY - $GIT_COMMIT_ONLY"
