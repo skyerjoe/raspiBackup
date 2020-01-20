@@ -60,11 +60,11 @@ IS_HOTFIX=$((! $? ))
 MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
 
-GIT_DATE="$Date: 2020-01-15 18:33:59 +0100$"
+GIT_DATE="$Date: 2020-01-20 23:06:19 +0100$"
 GIT_DATE_ONLY=${GIT_DATE/: /}
 GIT_DATE_ONLY=$(cut -f 2 -d ' ' <<< $GIT_DATE)
 GIT_TIME_ONLY=$(cut -f 3 -d ' ' <<< $GIT_DATE)
-GIT_COMMIT="$Sha1: 55ad7fa$"
+GIT_COMMIT="$Sha1: 455fb8d$"
 GIT_COMMIT_ONLY=$(cut -f 2 -d ' ' <<< $GIT_COMMIT | sed 's/\$//')
 
 GIT_CODEVERSION="$MYSELF $VERSION, $GIT_DATE_ONLY/$GIT_TIME_ONLY - $GIT_COMMIT_ONLY"
@@ -343,8 +343,8 @@ MSG_MISSING_START_STOP=19
 MSG_EN[$MSG_MISSING_START_STOP]="RBK0019E: Missing option -a and -o."
 MSG_DE[$MSG_MISSING_START_STOP]="RBK0019E: Option -a und -o nicht angegeben."
 MSG_FILESYSTEM_INCORRECT=20
-MSG_EN[$MSG_FILESYSTEM_INCORRECT]="RBK0020E: Filesystem of rsync backup directory %s seems not to support %s."
-MSG_DE[$MSG_FILESYSTEM_INCORRECT]="RBK0020E: Dateisystem des rsync Backupverzeichnisses %s scheint keine %s zu unterstützen."
+MSG_EN[$MSG_FILESYSTEM_INCORRECT]="RBK0020E: Filesystem of rsync backup directory \"%s\" seems not to support %s."
+MSG_DE[$MSG_FILESYSTEM_INCORRECT]="RBK0020E: Dateisystem des rsync Backupverzeichnisses \"%s\" scheint keine %s zu unterstützen."
 MSG_BACKUP_PROGRAM_ERROR=21
 MSG_EN[$MSG_BACKUP_PROGRAM_ERROR]="RBK0021E: Backupprogram for type %s failed with RC %s."
 MSG_DE[$MSG_BACKUP_PROGRAM_ERROR]="RBK0021E: Backupprogramm des Typs %s beendete sich mit RC %s."
@@ -358,23 +358,23 @@ MSG_TOOL_ERROR=24
 MSG_EN[$MSG_TOOL_ERROR]="RBK0024E: Backup tool %s received error %s. Errormessages:$NL%s"
 MSG_DE[$MSG_TOOL_ERROR]="RBK0024E: Backupprogramm %s hat einen Fehler %s bekommen. Fehlermeldungen:$NL%s"
 MSG_DIR_TO_BACKUP_DOESNOTEXIST=25
-MSG_EN[$MSG_DIR_TO_BACKUP_DOESNOTEXIST]="RBK0025E: Backupdirectory %s does not exist."
-MSG_DE[$MSG_DIR_TO_BACKUP_DOESNOTEXIST]="RBK0025E: Backupverzeichnis %s existiert nicht."
+MSG_EN[$MSG_DIR_TO_BACKUP_DOESNOTEXIST]="RBK0025E: Backupdirectory \"%s\" does not exist."
+MSG_DE[$MSG_DIR_TO_BACKUP_DOESNOTEXIST]="RBK0025E: Backupverzeichnis \"%s\" existiert nicht."
 MSG_SAVED_LOG=26
-MSG_EN[$MSG_SAVED_LOG]="RBK0026I: Debug logfile saved in %s."
-MSG_DE[$MSG_SAVED_LOG]="RBK0026I: Debug Logdatei wurde in %s gesichert."
+MSG_EN[$MSG_SAVED_LOG]="RBK0026I: Debug logfile saved in \"%s\"."
+MSG_DE[$MSG_SAVED_LOG]="RBK0026I: Debug Logdatei wurde in \"%s\" gesichert."
 MSG_NO_DEVICEMOUNTED=27
-MSG_EN[$MSG_NO_DEVICEMOUNTED]="RBK0027E: No external device mounted on %s. SD card would be used for backup."
-MSG_DE[$MSG_NO_DEVICEMOUNTED]="RBK0027E: Kein externes Gerät an %s verbunden. Die SD Karte würde für das Backup benutzt werden."
+MSG_EN[$MSG_NO_DEVICEMOUNTED]="RBK0027E: No external device mounted on \"%s\". SD card would be used for backup."
+MSG_DE[$MSG_NO_DEVICEMOUNTED]="RBK0027E: Kein externes Gerät an \"%s\" verbunden. Die SD Karte würde für das Backup benutzt werden."
 MSG_RESTORE_DIRECTORY_NO_DIRECTORY=28
-MSG_EN[$MSG_RESTORE_DIRECTORY_NO_DIRECTORY]="RBK0028E: %s is no backup directory of $MYNAME."
-MSG_DE[$MSG_RESTORE_DIRECTORY_NO_DIRECTORY]="RBK0028E: %s ist kein Wiederherstellungsverzeichnis von $MYNAME."
+MSG_EN[$MSG_RESTORE_DIRECTORY_NO_DIRECTORY]="RBK0028E: \"%s\" is no backup directory of $MYNAME."
+MSG_DE[$MSG_RESTORE_DIRECTORY_NO_DIRECTORY]="RBK0028E: \"%s\" ist kein Wiederherstellungsverzeichnis von $MYNAME."
 MSG_MPACK_NOT_INSTALLED=29
 MSG_EN[$MSG_MPACK_NOT_INSTALLED]="RBK0029E: Mail program mpack not installed to send emails. No log can be attached to the eMail."
 MSG_DE[$MSG_MPACK_NOT_INSTALLED]="RBK0029E: Mail Program mpack is nicht installiert. Es kann kein Log an die eMail angehängt werden."
 MSG_IMG_DD_FAILED=30
-MSG_EN[$MSG_IMG_DD_FAILED]="RBK0030E: %s file creation with dd failed with RC %s."
-MSG_DE[$MSG_IMG_DD_FAILED]="RBK0030E: %s Datei Erzeugung mit dd endet fehlerhaft mit RC %s."
+MSG_EN[$MSG_IMG_DD_FAILED]="RBK0030E: \"%s\" file creation with dd failed with RC %s."
+MSG_DE[$MSG_IMG_DD_FAILED]="RBK0030E: \"%s\" Datei Erzeugung mit dd endet fehlerhaft mit RC %s."
 MSG_CHECKING_FOR_NEW_VERSION=31
 MSG_EN[$MSG_CHECKING_FOR_NEW_VERSION]="RBK0031I: Checking whether a new version of $MYSELF is available."
 MSG_DE[$MSG_CHECKING_FOR_NEW_VERSION]="RBK0031I: Prüfe ob eine neue Version von $MYSELF verfügbar ist."
@@ -385,8 +385,8 @@ MSG_CLEANING_UP=33
 MSG_EN[$MSG_CLEANING_UP]="RBK0033I: Please wait until cleanup has finished."
 MSG_DE[$MSG_CLEANING_UP]="RBK0032I: Bitte warten bis aufgeräumt wurde."
 MSG_FILE_NOT_FOUND=34
-MSG_EN[$MSG_FILE_NOT_FOUND]="RBK0034E: File %s not found."
-MSG_DE[$MSG_FILE_NOT_FOUND]="RBK0034E: Datei %s nicht gefunden."
+MSG_EN[$MSG_FILE_NOT_FOUND]="RBK0034E: File \"%s\" not found."
+MSG_DE[$MSG_FILE_NOT_FOUND]="RBK0034E: Datei \"%s\" nicht gefunden."
 MSG_RESTORE_PROGRAM_ERROR=35
 MSG_EN[$MSG_RESTORE_PROGRAM_ERROR]="RBK0035E: Backupprogram %s failed during restore with RC %s."
 MSG_DE[$MSG_RESTORE_PROGRAM_ERROR]="RBK0035E: Backupprogramm %s endete beim Restore mit RC %s."
@@ -412,17 +412,17 @@ MSG_TITLE_ERROR=42
 MSG_EN[$MSG_TITLE_ERROR]="%s: Backup failed !!!."
 MSG_DE[$MSG_TITLE_ERROR]="%s: Backup nicht erfolgreich !!!."
 MSG_REMOVING_BACKUP=43
-MSG_EN[$MSG_REMOVING_BACKUP]="RBK0043I: Removing incomplete backup in %s. This may take some time. Please be patient."
-MSG_DE[$MSG_REMOVING_BACKUP]="RBK0043I: Unvollständiges Backup %s in wird gelöscht. Das kann etwas dauern. Bitte Geduld."
+MSG_EN[$MSG_REMOVING_BACKUP]="RBK0043I: Removing incomplete backup in \"%s\". This may take some time. Please be patient."
+MSG_DE[$MSG_REMOVING_BACKUP]="RBK0043I: Unvollständiges Backup \"%s\" in wird gelöscht. Das kann etwas dauern. Bitte Geduld."
 MSG_CREATING_BOOT_BACKUP=44
-MSG_EN[$MSG_CREATING_BOOT_BACKUP]="RBK0044I: Creating backup of boot partition in %s."
-MSG_DE[$MSG_CREATING_BOOT_BACKUP]="RBK0044I: Backup der Bootpartition wird in %s erstellt."
+MSG_EN[$MSG_CREATING_BOOT_BACKUP]="RBK0044I: Creating backup of boot partition in \"%s\"."
+MSG_DE[$MSG_CREATING_BOOT_BACKUP]="RBK0044I: Backup der Bootpartition wird in \"%s\" erstellt."
 MSG_CREATING_PARTITION_BACKUP=45
-MSG_EN[$MSG_CREATING_PARTITION_BACKUP]="RBK0045I: Creating backup of partition layout in %s."
-MSG_DE[$MSG_CREATING_PARTITION_BACKUP]="RBK0044I: Backup des Partitionlayouts wird in %s erstellt."
+MSG_EN[$MSG_CREATING_PARTITION_BACKUP]="RBK0045I: Creating backup of partition layout in \"%s\"."
+MSG_DE[$MSG_CREATING_PARTITION_BACKUP]="RBK0044I: Backup des Partitionlayouts wird in \"%s\" erstellt."
 MSG_CREATING_MBR_BACKUP=46
-MSG_EN[$MSG_CREATING_MBR_BACKUP]="RBK0046I: Creating backup of master boot record in %s."
-MSG_DE[$MSG_CREATING_MBR_BACKUP]="RBK0046I: Backup des Masterbootrecords wird in %s erstellt."
+MSG_EN[$MSG_CREATING_MBR_BACKUP]="RBK0046I: Creating backup of master boot record in \"%s\"."
+MSG_DE[$MSG_CREATING_MBR_BACKUP]="RBK0046I: Backup des Masterbootrecords wird in \"%s\" erstellt."
 MSG_START_SERVICES_FAILED=47
 MSG_EN[$MSG_START_SERVICES_FAILED]="RBK0047W: Error occured when starting services. RC %s."
 MSG_DE[$MSG_START_SERVICES_FAILED]="RBK0047W: Ein Fehler trat beim Starten von Services auf. RC %s."
@@ -430,11 +430,11 @@ MSG_STOP_SERVICES_FAILED=48
 MSG_EN[$MSG_STOP_SERVICES_FAILED]="RBK0048E: Error occured when stopping services. RC %s."
 MSG_DE[$MSG_STOP_SERVICES_FAILED]="RBK0048E: Ein Fehler trat beim Beenden von Services auf. RC %s."
 MSG_SAVED_MSG=49
-MSG_EN[$MSG_SAVED_MSG]="RBK0049I: Messages saved in %s."
-MSG_DE[$MSG_SAVED_MSG]="RBK0049I: Meldungen wurden in %s gesichert."
+MSG_EN[$MSG_SAVED_MSG]="RBK0049I: Messages saved in \"%s\"."
+MSG_DE[$MSG_SAVED_MSG]="RBK0049I: Meldungen wurden in \"%s\" gesichert."
 MSG_RESTORING_FILE=50
-MSG_EN[$MSG_RESTORING_FILE]="RBK0050I: Restoring backup from %s."
-MSG_DE[$MSG_RESTORING_FILE]="RBK0050I: Backup wird von %s zurückgespielt."
+MSG_EN[$MSG_RESTORING_FILE]="RBK0050I: Restoring backup from \"%s\"."
+MSG_DE[$MSG_RESTORING_FILE]="RBK0050I: Backup wird von \"%s\" zurückgespielt."
 #MSG_RESTORING_MBR=51
 #MSG_EN[$MSG_RESTORING_MBR]="RBK0051I: Restoring mbr from %s to %s."
 #MSG_DE[$MSG_RESTORING_MBR]="RBK0051I: Master boot backup wird von %s auf %s zurückgespielt."
@@ -526,8 +526,8 @@ MSG_NEW_VERSION_AVAILABLE=80
 MSG_EN[$MSG_NEW_VERSION_AVAILABLE]="RBK0080I: $SMILEY_UPDATE_POSSIBLE There is a new version %s of $MYNAME available for download. You are running version %s and now can use option -U to upgrade your local version."
 MSG_DE[$MSG_NEW_VERSION_AVAILABLE]="RBK0080I: $SMILEY_UPDATE_POSSIBLE Es gibt eine neue Version %s von $MYNAME zum downloaden. Die momentan benutze Version ist %s und es kann mit der Option -U die lokale Version aktualisiert werden."
 MSG_BACKUP_TARGET=81
-MSG_EN[$MSG_BACKUP_TARGET]="RBK0081I: Creating backup of type %s in %s."
-MSG_DE[$MSG_BACKUP_TARGET]="RBK0081I: Backup vom Typ %s wird in %s erstellt."
+MSG_EN[$MSG_BACKUP_TARGET]="RBK0081I: Creating backup of type %s in \"%s\"."
+MSG_DE[$MSG_BACKUP_TARGET]="RBK0081I: Backup vom Typ %s wird in \"%s\" erstellt."
 MSG_EXISTING_BOOT_BACKUP=82
 MSG_EN[$MSG_EXISTING_BOOT_BACKUP]="RBK0082I: Backup of boot partition alreday exists in %s."
 MSG_DE[$MSG_EXISTING_BOOT_BACKUP]="RBK0082I: Backup der Bootpartition in %s existiert schon."
@@ -631,8 +631,8 @@ MSG_DEPLOYED_HOST=115
 MSG_EN[$MSG_DEPLOYED_HOST]="RBK0115I: $MYNAME $VERSION installed on host %s for user %s."
 MSG_DE[$MSG_DEPLOYED_HOST]="RBK0115I: $MYNAME $VERSION wurde auf Server %s für Benutzer %s installiert."
 MSG_INCLUDED_CONFIG=116
-MSG_EN[$MSG_INCLUDED_CONFIG]="RBK0116I: Using config file %s."
-MSG_DE[$MSG_INCLUDED_CONFIG]="RBK0116I: Konfigurationsdatei %s wird benutzt."
+MSG_EN[$MSG_INCLUDED_CONFIG]="RBK0116I: Using config file \"%s\"."
+MSG_DE[$MSG_INCLUDED_CONFIG]="RBK0116I: Konfigurationsdatei \"%s\" wird benutzt."
 MSG_CURRENT_SCRIPT_VERSION=117
 MSG_EN[$MSG_CURRENT_SCRIPT_VERSION]="RBK0117I: Current script version: %s"
 MSG_DE[$MSG_CURRENT_SCRIPT_VERSION]="RBK0117I: Aktuelle Scriptversion: %s"
@@ -667,8 +667,8 @@ MSG_DEPLOYING_HOST_OFFLINE=127
 MSG_EN[$MSG_DEPLOYING_HOST_OFFLINE]="RBK0127E: Server %s offline."
 MSG_DE[$MSG_DEPLOYING_HOST_OFFLINE]="RBK0127E: Server %s ist nicht erreichbar."
 MSG_USING_LOGFILE=128
-MSG_EN[$MSG_USING_LOGFILE]="RBK0128I: Using logfile %s."
-MSG_DE[$MSG_USING_LOGFILE]="RBK0128I: Logdatei ist %s."
+MSG_EN[$MSG_USING_LOGFILE]="RBK0128I: Using logfile \"%s\"."
+MSG_DE[$MSG_USING_LOGFILE]="RBK0128I: Logdatei ist \"%s\"."
 MSG_EMAIL_EXTENSION_NOT_FOUND=129
 MSG_EN[$MSG_EMAIL_EXTENSION_NOT_FOUND]="RBK0129E: email extension %s not found."
 MSG_DE[$MSG_EMAIL_EXTENSION_NOT_FOUND]="RBK0129E: Email Erweiterung %s nicht gefunden."
@@ -682,11 +682,11 @@ MSG_SKIPPING_CREATING_PARTITIONS=132
 MSG_EN[$MSG_SKIPPING_CREATING_PARTITIONS]="RBK0132W: No partitions are created. Reusing existing patritions."
 MSG_DE[$MSG_SKIPPING_CREATING_PARTITIONS]="RBK0132W: Es werden keine Partitionen erstellt sondern die existierenden Partitionen benutzt."
 MSG_HARDLINK_DIRECTORY_USED=133
-MSG_EN[$MSG_HARDLINK_DIRECTORY_USED]="RBK0133I: Using directory %s for hardlinks."
-MSG_DE[$MSG_HARDLINK_DIRECTORY_USED]="RBK0133I: Verzeichnis %s wird für Hardlinks benutzt."
+MSG_EN[$MSG_HARDLINK_DIRECTORY_USED]="RBK0133I: Using directory \"%s\" for hardlinks."
+MSG_DE[$MSG_HARDLINK_DIRECTORY_USED]="RBK0133I: Verzeichnis \"%s\" wird für Hardlinks benutzt."
 MSG_UNABLE_TO_USE_HARDLINKS=134
-MSG_EN[$MSG_UNABLE_TO_USE_HARDLINKS]="RBK0134E: Unable to use hardlinks on %s for bootpartition files. RC %s."
-MSG_DE[$MSG_UNABLE_TO_USE_HARDLINKS]="RBK0134E: Hardlinkslinks können nicht auf %s für Bootpartitionsdateien benutzt werden. RC %s."
+MSG_EN[$MSG_UNABLE_TO_USE_HARDLINKS]="RBK0134E: Unable to use hardlinks on \"%s\" for bootpartition files. RC %s."
+MSG_DE[$MSG_UNABLE_TO_USE_HARDLINKS]="RBK0134E: Hardlinkslinks können nicht auf \"%s\" für Bootpartitionsdateien benutzt werden. RC %s."
 MSG_SCRIPT_IS_DEPRECATED=135
 MSG_EN[$MSG_SCRIPT_IS_DEPRECATED]="RBK0135W: ==> Current script version %s has a severe bug and should be updated immediately <==="
 MSG_DE[$MSG_SCRIPT_IS_DEPRECATED]="RBK0135W: ==> Aktuelle Scriptversion %s enthält einen gravierenden Fehler und sollte sofort aktualisiert werden <==="
@@ -736,14 +736,14 @@ MSG_MAX_4GB_LIMIT=150
 MSG_EN[$MSG_MAX_4GB_LIMIT]="RBK0150W: Maximum file size in backup directory %s is limited to 4GB."
 MSG_DE[$MSG_MAX_4GB_LIMIT]="RBK0150W: Maximale Dateigröße im Backupverzeichnis %s ist auf 4GB begrenzt."
 MSG_USING_BACKUPPATH=151
-MSG_EN[$MSG_USING_BACKUPPATH]="RBK0151I: Using backuppath %s."
-MSG_DE[$MSG_USING_BACKUPPATH]="RBK0151I: Backuppfad %s wird benutzt."
+MSG_EN[$MSG_USING_BACKUPPATH]="RBK0151I: Using backuppath \"%s\"."
+MSG_DE[$MSG_USING_BACKUPPATH]="RBK0151I: Backuppfad \"%s\" wird benutzt."
 MSG_MKFS_FAILED=152
-MSG_EN[$MSG_MKFS_FAILED]="RBK0152E: Unable to create filesystem: '%s' - RC: %s."
-MSG_DE[$MSG_MKFS_FAILED]="RBK0152E: Dateisystem kann nicht erstellt werden: '%s' - RC: %s."
+MSG_EN[$MSG_MKFS_FAILED]="RBK0152E: Unable to create filesystem: \"%s\" - RC: %s."
+MSG_DE[$MSG_MKFS_FAILED]="RBK0152E: Dateisystem kann nicht erstellt werden: \"%s\" - RC: %s."
 MSG_LABELING_FAILED=153
-MSG_EN[$MSG_LABELING_FAILED]="RBK0153E: Unable to label partition: '%s' - RC: %s."
-MSG_DE[$MSG_LABELING_FAILED]="RBK0153E: Partition kann nicht mit einem Label versehen werden: '%s' - RC: %s."
+MSG_EN[$MSG_LABELING_FAILED]="RBK0153E: Unable to label partition: \"%s\" - RC: %s."
+MSG_DE[$MSG_LABELING_FAILED]="RBK0153E: Partition kann nicht mit einem Label versehen werden: \"%s\" - RC: %s."
 MSG_RESTORE_DEVICE_MOUNTED=154
 MSG_EN[$MSG_RESTORE_DEVICE_MOUNTED]="RBK0154E: Restore is not possible when a partition of device %s is mounted."
 MSG_DE[$MSG_RESTORE_DEVICE_MOUNTED]="RBK0154E: Ein Restore ist nicht möglich wenn eine Partition von %s gemounted ist."
@@ -757,8 +757,8 @@ MSG_SKIP_STOPPING_SERVICES=157
 MSG_EN[$MSG_SKIP_STOPPING_SERVICES]="RBK0157W: No services to stop."
 MSG_DE[$MSG_SKIP_STOPPING_SERVICES]="RBK0157W: Keine Systemd Services sind zu stoppen."
 MSG_MAIN_BACKUP_PROGRESSING=158
-MSG_EN[$MSG_MAIN_BACKUP_PROGRESSING]="RBK0158I: Creating native %s backup %s."
-MSG_DE[$MSG_MAIN_BACKUP_PROGRESSING]="RBK0158I: %s Backup %s wird erstellt."
+MSG_EN[$MSG_MAIN_BACKUP_PROGRESSING]="RBK0158I: Creating native %s backup in %s."
+MSG_DE[$MSG_MAIN_BACKUP_PROGRESSING]="RBK0158I: %s Backup wird in %s erstellt."
 MSG_BACKUPS_KEPT=159
 MSG_EN[$MSG_BACKUPS_KEPT]="RBK0159I: %s backups kept for %s backup type."
 MSG_DE[$MSG_BACKUPS_KEPT]="RBK0159I: %s Backups werden für den Backuptyp %s aufbewahrt."
@@ -803,8 +803,8 @@ MSG_NOPARTITIONS_TOBACKUP_FOUND=171
 MSG_EN[$MSG_NOPARTITIONS_TOBACKUP_FOUND]="RBK0171E: Unable to detect any partitions to backup."
 MSG_DE[$MSG_NOPARTITIONS_TOBACKUP_FOUND]="RBK0171E: Es können keine zu sichernde Partitionen gefunden werden."
 MSG_UNABLE_TO_CREATE_DIRECTORY=172
-MSG_EN[$MSG_UNABLE_TO_CREATE_DIRECTORY]="RBK0172E: Unable to create directory %s."
-MSG_DE[$MSG_UNABLE_TO_CREATE_DIRECTORY]="RBK0172E: Verzeichnis %s kann nicht erstellt werden."
+MSG_EN[$MSG_UNABLE_TO_CREATE_DIRECTORY]="RBK0172E: Unable to create directory \"%s\"."
+MSG_DE[$MSG_UNABLE_TO_CREATE_DIRECTORY]="RBK0172E: Verzeichnis \"%s\" kann nicht erstellt werden."
 MSG_INTRO_HOTFIX_MESSAGE=173
 MSG_EN[$MSG_INTRO_HOTFIX_MESSAGE]="RBK0173W: =========> NOTE  <========= \
 ${NL}!!! RBK0173W: This is a temporary hotfix and has to be upgraded to next available version as soon as one is available. \
@@ -825,11 +825,11 @@ MSG_ALL_BACKUPS_KEPT=177
 MSG_EN[$MSG_ALL_BACKUPS_KEPT]="RBK0177W: All backups kept for backup type %s."
 MSG_DE[$MSG_ALL_BACKUPS_KEPT]="RBK0177W: Alle Backups werden für den Backuptyp %s aufbewahrt."
 MSG_IMG_BOOT_BACKUP_FAILED=178
-MSG_EN[$MSG_IMG_BOOT_BACKUP_FAILED]="RBK0178E: Creation of %s failed with RC %s."
-MSG_DE[$MSG_IMG_BOOT_BACKUP_FAILED]="RBK0178E: Erzeugung von %s Datei endet fehlerhaft mit RC %s."
+MSG_EN[$MSG_IMG_BOOT_BACKUP_FAILED]="RBK0178E: Creation of \"%s\" failed with RC %s."
+MSG_DE[$MSG_IMG_BOOT_BACKUP_FAILED]="RBK0178E: Erzeugung von \"%s\" Datei endet fehlerhaft mit RC %s."
 MSG_IMG_BOOT_RESTORE_FAILED=179
-MSG_EN[$MSG_IMG_BOOT_RESTORE_FAILED]="RBK0179E: Restore of %s file failed with RC %s."
-MSG_DE[$MSG_IMG_BOOT_RESTORE_FAILED]="RBK0179E: Wiederherstellung von %s Datei endet fehlerhaft mit RC %s."
+MSG_EN[$MSG_IMG_BOOT_RESTORE_FAILED]="RBK0179E: Restore of \"%s\" file failed with RC %s."
+MSG_DE[$MSG_IMG_BOOT_RESTORE_FAILED]="RBK0179E: Wiederherstellung von \"%s\" Datei endet fehlerhaft mit RC %s."
 MSG_FORMATTING_FIRST_PARTITION=180
 MSG_EN[$MSG_FORMATTING_FIRST_PARTITION]="RBK0180I: Formating first partition (boot partition) %s."
 MSG_DE[$MSG_FORMATTING_FIRST_PARTITION]="RBK0180I: Erste Partition (Bootpartition) %s wird formatiert."
@@ -883,8 +883,8 @@ MSG_FORCE_UPDATE=195
 MSG_EN[$MSG_FORCE_UPDATE]="RBK0192I: Update $MYSELF %s."
 MSG_DE[$MSG_FORCE_UPDATE]="RBK0192I: $MYSELF %s aktualisieren."
 MSG_NO_HARDLINKS_USED=196
-MSG_EN[$MSG_NO_HARDLINKS_USED]="RBK0196W: No hardlinks supported on %s."
-MSG_DE[$MSG_NO_HARDLINKS_USED]="RBK0196W: %s unterstützt keine Hardlinks."
+MSG_EN[$MSG_NO_HARDLINKS_USED]="RBK0196W: No hardlinks supported on \"%s\"."
+MSG_DE[$MSG_NO_HARDLINKS_USED]="RBK0196W: \"%s\" unterstützt keine Hardlinks."
 MSG_EMAIL_SEND_FAILED=197
 MSG_EN[$MSG_EMAIL_SEND_FAILED]="RBK0197W: eMail send command %s failed with RC %s."
 MSG_DE[$MSG_EMAIL_SEND_FAILED]="RBK0197W: eMail mit %s versenden endet fehlerhaft mit RC %s."
@@ -910,8 +910,8 @@ MSG_TRUNCATING_ERROR=204
 MSG_EN[$MSG_TRUNCATING_ERROR]="RBK0204E: Unable to calculate truncation backup size."
 MSG_DE[$MSG_TRUNCATING_ERROR]="RBK0204E: Verkleinerte Backupgröße kann nicht berechnet werden."
 MSG_CLEANUP_BACKUP_VERSION=205
-MSG_EN[$MSG_CLEANUP_BACKUP_VERSION]="RBK0205I: Deleting oldest backup in %s. This may take some time. Please be patient."
-MSG_DE[$MSG_CLEANUP_BACKUP_VERSION]="RBK0205I: Ältestes Backup %s in wird gelöscht. Das kann etwas dauern. Bitte Geduld."
+MSG_EN[$MSG_CLEANUP_BACKUP_VERSION]="RBK0205I: Deleting oldest backup in \"%s\". This may take some time. Please be patient."
+MSG_DE[$MSG_CLEANUP_BACKUP_VERSION]="RBK0205I: Ältestes Backup in \"%s\" wird gelöscht. Das kann etwas dauern. Bitte Geduld."
 MSG_CREATING_UUID=206
 MSG_EN[$MSG_CREATING_UUID]="RBK0206I: Creating new %s %s on %s."
 MSG_DE[$MSG_CREATING_UUID]="RBK0206I: Erzeuge neue %s %s auf %s."
@@ -943,8 +943,8 @@ MSG_SMART_RECYCLE_PARM_INVALID=215
 MSG_EN[$MSG_SMART_RECYCLE_PARM_INVALID]="RBK0215E: Invalid smart recycle parameter %s in option '%s'."
 MSG_DE[$MSG_SMART_RECYCLE_PARM_INVALID]="RBK0215E: Ungültiger smart recycle Parameter %s in Option '%s'."
 MSG_APPLYING_BACKUP_STRATEGY_ONLY=216
-MSG_EN[$MSG_APPLYING_BACKUP_STRATEGY_ONLY]="RBK0216W: Applying backup strategy in %s only."
-MSG_DE[$MSG_APPLYING_BACKUP_STRATEGY_ONLY]="RBK0216W: Wende nur Backupstrategie in %s an."
+MSG_EN[$MSG_APPLYING_BACKUP_STRATEGY_ONLY]="RBK0216W: Applying backup strategy in \"%s\" only."
+MSG_DE[$MSG_APPLYING_BACKUP_STRATEGY_ONLY]="RBK0216W: Wende nur Backupstrategie in \"%s\" an."
 MSG_SMART_RECYCLE_FILES=217
 MSG_EN[$MSG_SMART_RECYCLE_FILES]="RBK0217I: %s backups will be smart recycled. %s backups will be kept."
 MSG_DE[$MSG_SMART_RECYCLE_FILES]="RBK0217I: %s Backups werden smart recycled. %s Backups werden aufgehoben."
@@ -1004,7 +1004,10 @@ function getMessageText() {         # languageflag messagenumber parm1 parm2 ...
 	if [[ "$msg" =~ ^- ]]; then
 		msg=$(sed -e 's/--- //' -e 's/%[0-9]/%s/g' -e 's/\\%/%%/' <<< "$msg")
 	fi
+	local oldIFS="$IFS" # allow spaces in parms
+	IFS=""
 	printf -v msg "$msg" "${@:3}"
+	IFS="$oldIFS"
 
 	local msgPref="${msg:0:3}"
 	if [[ $msgPref == "RBK" ]]; then								# RBK0001E
@@ -2165,13 +2168,13 @@ function supportsHardlinks() {	# directory
 	local links
 	local result=1 # no
 
-	touch /$1/$MYNAME.hlinkfile
-	cp -l /$1/$MYNAME.hlinkfile /$1/$MYNAME.hlinklink
-	links=$(ls -la /$1/$MYNAME.hlinkfile | cut -f 2 -d ' ')
+	touch "/$1/$MYNAME.hlinkfile"
+	cp -l "/$1/$MYNAME.hlinkfile" "/$1/$MYNAME.hlinklink"
+	links=$(ls -la "/$1/$MYNAME.hlinkfile" | cut -f 2 -d ' ')
 	logItem "Links: $links"
 	[[ $links == 2 ]] && result=0
-	rm -f /$1/$MYNAME.hlinkfile &>/dev/null
-	rm -f /$1/$MYNAME.hlinklink &>/dev/null
+	rm -f "/$1/$MYNAME.hlinkfile" &>/dev/null
+	rm -f "/$1/$MYNAME.hlinklink" &>/dev/null
 
 	logExit "$result"
 
@@ -2185,11 +2188,11 @@ function supportsSymlinks() {	# directory
 	logEntry "$1"
 
 	local result=1	# no
-	touch /$1/$MYNAME.slinkfile
-	ln -s /$1/$MYNAME.slinkfile /$1/$MYNAME.slinklink
-	[[ -L /$1/$MYNAME.slinklink ]] && result=0
-	rm -f /$1/$MYNAME.slinkfile &>/dev/null
-	rm -f /$1/$MYNAME.slinklink &>/dev/null
+	touch "/$1/$MYNAME.slinkfile"
+	ln -s "/$1/$MYNAME.slinkfile" "/$1/$MYNAME.slinklink"
+	[[ -L "/$1/$MYNAME.slinklink" ]] && result=0
+	rm -f "/$1/$MYNAME.slinkfile" &>/dev/null
+	rm -f "/$1/$MYNAME.slinklink" &>/dev/null
 
 	logExit "$result"
 
@@ -6701,7 +6704,7 @@ done
 (( $INCLUDE_ONLY )) && exitNormal
 
 # set positional arguments in argument list $@
-set -- $PARAMS
+set -- "$PARAMS"
 
 # Override default parms with parms in custom config file
 
