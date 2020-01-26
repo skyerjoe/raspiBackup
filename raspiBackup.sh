@@ -60,11 +60,11 @@ IS_HOTFIX=$((! $? ))
 MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
 
-GIT_DATE="$Date: 2020-01-15 18:33:59 +0100$"
+GIT_DATE="$Date: 2020-01-26 14:57:40 +0100$"
 GIT_DATE_ONLY=${GIT_DATE/: /}
 GIT_DATE_ONLY=$(cut -f 2 -d ' ' <<< $GIT_DATE)
 GIT_TIME_ONLY=$(cut -f 3 -d ' ' <<< $GIT_DATE)
-GIT_COMMIT="$Sha1: 55ad7fa$"
+GIT_COMMIT="$Sha1: d95d3e9$"
 GIT_COMMIT_ONLY=$(cut -f 2 -d ' ' <<< $GIT_COMMIT | sed 's/\$//')
 
 GIT_CODEVERSION="$MYSELF $VERSION, $GIT_DATE_ONLY/$GIT_TIME_ONLY - $GIT_COMMIT_ONLY"
@@ -966,6 +966,9 @@ MSG_DE[$MSG_SMART_RECYCLE_FILE_WOULD_BE_KEPT]="RBK0222W: Smart Backup Strategie 
 MSG_UMOUNT_ERROR=223
 MSG_EN[$MSG_UMOUNT_ERROR]="RBK0223E: Umount %s to %s failed. RC %s."
 MSG_DE[$MSG_UMOUNT_ERROR]="RBK0223E: Umount von %s an %s ist fehlerhaft."
+MSG_FILE_CONTAINS_SPACES=224
+MSG_EN[$MSG_FILE_CONTAINS_SPACES]="RBK0224E: Spaces are not allowed in \"%s\"."
+MSG_DE[$MSG_FILE_CONTAINS_SPACES]="RBK0224E: Leerzeichen sind nicht in \"%s\" erlaubt."
 
 declare -A MSG_HEADER=( ['I']="---" ['W']="!!!" ['E']="???" )
 
@@ -1765,6 +1768,11 @@ function getPartitionNumber() { # deviceName
 	echo "$id"
 	logExit "$id"
 
+}
+
+function hasSpaces() { # file- or directory name
+	[[ $1 = *" "* ]]
+	return
 }
 
 function isUpdatePossible() {
@@ -6424,9 +6432,13 @@ while (( "$#" )); do
 	  o=$(checkOptionParameter "$1" "$2")
 	  (( $? )) && exitError $RC_PARAMETER_ERROR
 	  CUSTOM_CONFIG_FILE="$o"; shift 2
+	  if hasSpaces "$CUSTOM_CONFIG_FILE"; then
+		writeToConsole $MSG_LEVEL_MINIMAL $MSG_FILE_CONTAINS_SPACES "$CUSTOM_CONFIG_FILE"
+		exitError $RC_MISC_ERROR
+	  fi
 	  if [[ ! -f "$CUSTOM_CONFIG_FILE" ]]; then
-	      writeToConsole $MSG_LEVEL_MINIMAL $MSG_FILE_ARG_NOT_FOUND "$CUSTOM_CONFIG_FILE"
-          exitError $RC_MISSING_FILES
+		writeToConsole $MSG_LEVEL_MINIMAL $MSG_FILE_ARG_NOT_FOUND "$CUSTOM_CONFIG_FILE"
+        exitError $RC_MISSING_FILES
 	  fi
 	  CUSTOM_CONFIG_FILE="$(readlink -f "$CUSTOM_CONFIG_FILE")"
 	  ;;
@@ -6446,8 +6458,8 @@ while (( "$#" )); do
   	  LANGUAGE=${LANGUAGE^^*}
 	  msgVar="MSG_${LANGUAGE}"
 	  if [[ -z ${!msgVar} ]]; then
-		  writeToConsole $MSG_LEVEL_MINIMAL $MSG_LANGUAGE_NOT_SUPPORTED $LANGUAGE
-		  exitError $RC_PARAMETER_ERROR
+		writeToConsole $MSG_LEVEL_MINIMAL $MSG_LANGUAGE_NOT_SUPPORTED $LANGUAGE
+		exitError $RC_PARAMETER_ERROR
 	  fi
 	  ;;
 
@@ -6552,6 +6564,10 @@ while (( "$#" )); do
 	  o=$(checkOptionParameter "$1" "$2")
 	  (( $? )) && exitError $RC_PARAMETER_ERROR
 	  BACKUPPATH="$o"; shift 2
+	  if hasSpaces "$BACKUPPATH"; then
+	    writeToConsole $MSG_LEVEL_MINIMAL $MSG_FILE_CONTAINS_SPACES "$BACKUPPATH"
+		exitError $RC_MISC_ERROR
+	  fi
 	  if [[ ! -d "$BACKUPPATH" ]]; then
 		  writeToConsole $MSG_LEVEL_MINIMAL $MSG_FILE_ARG_NOT_FOUND "$BACKUPPATH"
 		  exitError $RC_MISSING_FILES
@@ -6567,9 +6583,13 @@ while (( "$#" )); do
 	  o=$(checkOptionParameter "$1" "$2")
 	  (( $? )) && exitError $RC_PARAMETER_ERROR
 	  RESTOREFILE="$o"; shift 2
+	  if hasSpaces "$RESTOREFILE"; then
+	    writeToConsole $MSG_LEVEL_MINIMAL $MSG_FILE_CONTAINS_SPACES "$RESTOREFILE"
+		exitError $RC_MISC_ERROR
+	  fi
 	  if [[ ! -d "$RESTOREFILE" && ! -f "$RESTOREFILE" ]]; then
-		  writeToConsole $MSG_LEVEL_MINIMAL $MSG_FILE_ARG_NOT_FOUND "$RESTOREFILE"
-		  exitError $RC_MISSING_FILES
+		writeToConsole $MSG_LEVEL_MINIMAL $MSG_FILE_ARG_NOT_FOUND "$RESTOREFILE"
+		exitError $RC_MISSING_FILES
 	  fi
 	  RESTOREFILE="$(readlink -f "$RESTOREFILE")"
 	  ;;
@@ -6692,7 +6712,7 @@ while (( "$#" )); do
 	  ;;
 
 	*) # preserve positional arguments
-	  [[ -z $PARAMS ]] && PARAMS="$1" || PARAMS="$PARAMS $1"
+	  [[ -z "$PARAMS" ]] && PARAMS="$1" || PARAMS="$PARAMS $1"
 	  shift
 	  ;;
   esac
@@ -6701,7 +6721,7 @@ done
 (( $INCLUDE_ONLY )) && exitNormal
 
 # set positional arguments in argument list $@
-set -- $PARAMS
+set -- "$PARAMS"
 
 # Override default parms with parms in custom config file
 
@@ -6723,6 +6743,11 @@ if (( ! $RESTORE )); then
 fi
 
 fileParameter="$1"
+if hasSpaces "$fileParameter"; then
+	writeToConsole $MSG_LEVEL_MINIMAL $MSG_FILE_CONTAINS_SPACES "$fileParameter"
+	exitError $RC_MISC_ERROR
+fi
+
 if [[ -n "$1" ]]; then
 	shift 1
 	if [[ ! -d "$fileParameter" && ! -f "$fileParameter" ]]; then
