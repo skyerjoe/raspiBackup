@@ -57,11 +57,11 @@ IS_HOTFIX=$((! $? ))
 MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
 
-GIT_DATE="$Date: 2019-06-17 20:10:20 +0200$"
+GIT_DATE="$Date: 2020-02-06 20:32:59 +0100$"
 GIT_DATE_ONLY=${GIT_DATE/: /}
 GIT_DATE_ONLY=$(cut -f 2 -d ' ' <<< $GIT_DATE)
 GIT_TIME_ONLY=$(cut -f 3 -d ' ' <<< $GIT_DATE)
-GIT_COMMIT="$Sha1: 2d927a2$"
+GIT_COMMIT="$Sha1: 1570273$"
 GIT_COMMIT_ONLY=$(cut -f 2 -d ' ' <<< $GIT_COMMIT | sed 's/\$//')
 
 GIT_CODEVERSION="$MYSELF $VERSION, $GIT_DATE_ONLY/$GIT_TIME_ONLY - $GIT_COMMIT_ONLY"
@@ -3172,15 +3172,15 @@ function tarBackup() {
 		target="\"${BACKUPTARGET_DIR}/$partition${FILE_EXTENSION[$BACKUPTYPE]}\""
 	else
 		bootPartitionBackup
-		source="/"
+		source=""
 		devroot=""
 		target="\"$BACKUPTARGET_FILE\""
 	fi
 
 	writeToConsole $MSG_LEVEL_MINIMAL $MSG_MAIN_BACKUP_PROGRESSING $BACKUPTYPE "${target//\\/}"
 
-	local log_file="${LOG_FILE/\//}" # remove leading /
-	local msg_file="${MSG_FILE/\//}" # remove leading /
+	local log_file="${LOG_FILE##*/}" # remove leading /
+	local msg_file="${MSG_FILE##*/}" # remove leading /
 
 	cmd="tar \
 		$TAR_BACKUP_OPTIONS \
@@ -3270,8 +3270,8 @@ function rsyncBackup() { # partition number (for partition based backup)
 
 	writeToConsole $MSG_LEVEL_MINIMAL $MSG_MAIN_BACKUP_PROGRESSING $BACKUPTYPE "${target//\\/}"
 
-	local log_file="${LOG_FILE/\//}" # remove leading /
-	local msg_file="${MSG_FILE/\//}" # remove leading /
+	local log_file="${LOG_FILE##*/}" # remove leading /
+	local msg_file="${MSG_FILE##*/}" # remove leading /
 
 	cmdParms="--exclude=\"$BACKUPPATH_PARAMETER\" \
 			--exclude=\"$excludeRoot/$log_file\" \
