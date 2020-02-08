@@ -60,11 +60,11 @@ IS_HOTFIX=$((! $? ))
 MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
 
-GIT_DATE="$Date: 2020-02-06 21:58:51 +0100$"
+GIT_DATE="$Date: 2020-02-08 18:20:55 +0100$"
 GIT_DATE_ONLY=${GIT_DATE/: /}
 GIT_DATE_ONLY=$(cut -f 2 -d ' ' <<< $GIT_DATE)
 GIT_TIME_ONLY=$(cut -f 3 -d ' ' <<< $GIT_DATE)
-GIT_COMMIT="$Sha1: bdc6f61$"
+GIT_COMMIT="$Sha1: e551e63$"
 GIT_COMMIT_ONLY=$(cut -f 2 -d ' ' <<< $GIT_COMMIT | sed 's/\$//')
 
 GIT_CODEVERSION="$MYSELF $VERSION, $GIT_DATE_ONLY/$GIT_TIME_ONLY - $GIT_COMMIT_ONLY"
@@ -3364,8 +3364,8 @@ function tarBackup() {
 		--warning=no-xdev \
 		--numeric-owner \
 		--exclude=\"$BACKUPPATH_PARAMETER/*\" \
-		--exclude=\"$source/$log_file\" \
-		--exclude=\"$source/$msg_file\" \
+		--exclude=\"$devroot/$log_file\" \
+		--exclude=\"$devroot/$msg_file\" \
 		--exclude='.gvfs' \
 		--exclude=$devroot/proc/* \
 		--exclude=$devroot/lost+found/* \
