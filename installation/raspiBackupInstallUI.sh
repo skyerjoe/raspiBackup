@@ -8,7 +8,7 @@
 #
 #######################################################################################################################
 #
-#    Copyright (C) 2015-2019 framp at linux-tips-and-tricks dot de
+#    Copyright (c) 2015-2020 framp at linux-tips-and-tricks dot de
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 
 MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
-VERSION="0.4.3" 	# -beta, -hotfix or -dev suffixes possible
+VERSION="0.4.3.1" 	# -beta, -hotfix or -dev suffixes possible
 
 if [[ (( ${BASH_VERSINFO[0]} < 4 )) || ( (( ${BASH_VERSINFO[0]} == 4 )) && (( ${BASH_VERSINFO[1]} < 3 )) ) ]]; then
 	echo "bash version 0.4.3 or beyond is required by $MYSELF" # nameref feature, declare -n var=$v
@@ -39,11 +39,11 @@ MYHOMEURL="https://$MYHOMEDOMAIN"
 
 MYDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-GIT_DATE="$Date: 2019-12-21 14:42:06 +0100$"
+GIT_DATE="$Date: 2020-02-09 17:00:14 +0100$"
 GIT_DATE_ONLY=${GIT_DATE/: /}
 GIT_DATE_ONLY=$(cut -f 2 -d ' ' <<<$GIT_DATE)
 GIT_TIME_ONLY=$(cut -f 3 -d ' ' <<<$GIT_DATE)
-GIT_COMMIT="$Sha1: 2c94cda$"
+GIT_COMMIT="$Sha1: 24a284b$"
 GIT_COMMIT_ONLY=$(cut -f 2 -d ' ' <<<$GIT_COMMIT | sed 's/\$//')
 
 GIT_CODEVERSION="$MYSELF $VERSION, $GIT_DATE_ONLY/$GIT_TIME_ONLY - $GIT_COMMIT_ONLY"
@@ -75,7 +75,7 @@ EOF
 PROPERTY_URL="$MYHOMEURL/downloads/raspibackup0613-properties/download"
 BETA_DOWNLOAD_URL="$MYHOMEURL/downloads/raspibackup-beta-sh/download"
 LATEST_TEMP_PROPERTY_FILE="/tmp/$MYNAME.properties"
-INSTALLER_DOWNLOAD_URL="$MYHOMEURL/downloads/raspiBackupInstall/download"
+INSTALLER_DOWNLOAD_URL="$MYHOMEURL/downloads/raspibackupinstallui-sh/download"
 STABLE_CODE_URL="$FILE_TO_INSTALL"
 
 DOWNLOAD_TIMEOUT=60 # seconds
@@ -2541,6 +2541,7 @@ function update_menu() {
 				$s2) update_installer_do ;;
 				*) whiptail --msgbox "Programm error: unrecognized option $FUN" $ROWS_MENU $WINDOW_COLS 1 ;;
 			esac || whiptail --msgbox "There was an error running option $FUN" $ROWS_MENU $WINDOW_COLS 1
+			parseCurrentVersions
 		fi
 	done
 	logExit
