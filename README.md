@@ -23,53 +23,6 @@ An installer [(Code)](https://github.com/framps/raspiBackup/blob/master/installa
 ![Screenshot2](https://github.com/framps/raspiBackup/blob/master/images/raspiBackupInstallUI-2.png)
 ![Screenshot3](https://github.com/framps/raspiBackup/blob/master/images/raspiBackupInstallUI-3.png)
 
-## Usage
-
-For the latest and actual list of options see [here](https://www.linux-tips-and-tricks.de/en/backup#parameters)
-
-```
-pi@raspberry: $ raspiBackup.sh
-raspiBackup.sh 0.6.4, 2019-01-07/20:47:27 - 0530211
-
-Usage: raspiBackup.sh [option]* {backupDirectory}
-
--General options-
--A append logfile to eMail (default: no)
--b {dd block size} (default: 1MB)
--D "{additional dd parameters}" (default: no)
--e {email address} (default: no)
--E "{additional email call parameters}" (default: no)
--g Display progress bar
--G {message language} (EN or DE) (default: EN)
--h display this help text
--l {log level} (Off | Debug) (default: Off)
--m {message level} (Minimal | Detailed) (default: Minimal)
--M {backup description}
--n notification if there is a newer scriptversion available for download (default: yes)
--s {email program to use} (mail,ssmtp,sendEmail,mailext) (default: mail)
---timestamps Prefix messages with timestampes (default: no)
--u "{excludeList}" List of directories to exclude from tar and rsync backup
--U current script version will be replaced by the actual version. Current version will be saved and can be restored with parameter -V
--v verbose output of backup tools (default: no)
--V restore a previous version
--z compress backup file with gzip (default: no)
-
--Backup options-
--a "{commands to execute after Backup}" (default: )
--B Save bootpartition in tar file (Default: 0)
--k {backupsToKeep} (default: 3)
--o "{commands to execute before Backup}" (default: no)
--P use dedicated partitionbackup mode (default: no)
--t {backupType} (dd|rsync|tar) (default: rsync)
--T "{List of partitions to save}" (Partition numbers, e.g. "1 2 3"). Only valid with parameter -P (default: *)
-
--Restore options-
--C Formating of the restorepartitions will check for badblocks (Standard: 0)
--d {restoreDevice} (default: no) (Example: /dev/sda)
--R {rootPartition} (default: restoreDevice) (Example: /dev/sdb1)
---noResizeRootFS or --resizeRootFS (Default: yes)
-```
-
 ## Detailed information
 
  * [English](https://www.linux-tips-and-tricks.de/en/backup)
@@ -95,15 +48,16 @@ Usage: raspiBackup.sh [option]* {backupDirectory}
 * Sample pre/post extension which initiates different actions depending on the return code of raspiBackup
 * Sample ready extension which copies /etc/fstab into the backup directory
 
-## Start with Systemd
+## Systemd
 
-To start raspiBackup with Systemd see 
+To start raspiBackup with Systemd see
 [here](systemd/systemd_readme.md)
+(thx Hofei)
 
 # REST API Server proof of concept
 
 Allows to start a backup from a remote system or any web UI.
-1. Download executable from RESTAPI directory
+1. Download executable from [RESTAPI directory](https://github.com/framps/raspiBackup/tree/master/RESTAPI)
 2. Create a file /usr/local/etc/raspiBackup.auth and define access credentials for the API. For every user create a line userid:password
 3. Set file attributes for /usr/local/etc/raspiBackup.auth to 600
 4. Start the RESTAPI with ```sudo raspiBackupRESTAPIListener```. Option -a can be used to define another listening port than :8080.
